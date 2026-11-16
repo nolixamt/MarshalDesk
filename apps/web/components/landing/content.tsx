@@ -17,7 +17,7 @@ export const navLinks: NavLink[] = [
   { label: "Contact", href: "#contact" },
 ];
 
-export const signIn: NavLink = { label: "Sign in", href: "/dashboard" };
+export const signIn: NavLink = { label: "Sign in", href: "/auth/sign-in" };
 
 export type TrustItem = { label: string; icon: LucideIcon };
 
@@ -34,7 +34,13 @@ export const hero = {
   headline: ["Support that", "runs itself"],
   subhead:
     "Your agent answers visitors around the clock from your own knowledge base and brings you in only when it isn't sure. You get your day back.",
-  cta: { label: "Get started", href: "/dashboard" },
+  cta: { label: "Get started", href: "/auth/sign-up" },
+};
+
+export const authShowcase = {
+  headline: ["Answers around", "the clock"],
+  subhead:
+    "Your agent answers visitors from your own knowledge base and brings you in only when it isn't sure.",
 };
 
 export type Stat = {

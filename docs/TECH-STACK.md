@@ -257,8 +257,8 @@ Your training data is likely out of date for these. Always check the linked sour
 1. ~~Models~~ Resolved: see section 8
 2. ~~DOCX support~~ Resolved: deferred
 3. Whether magic links work with Neon's shared email sender
-4. DiceBear avatar style
+4. ~~DiceBear avatar style~~ Resolved: `notionists-neutral` for members (HTTP API `10.x`), per DESIGN.md
 5. ~~PartyServer details~~ Resolved: `Conversation` and `Workspace` party classes with hibernation, rooms named by id, sockets opened with short-lived Next-minted realtime tokens checked in `onBeforeConnect`, and publishing over HTTP with a separate secret (see section 7)
-6. ~~How Prisma 8 connects to Neon on Vercel and in Neon Functions~~ Resolved: the same `postgres()` runtime over `pg` with the pooled `DATABASE_URL` in both; the Neon Function bundles `packages/db` as TypeScript source. pgvector comes from `@prisma/orm-extension-pgvector` 8.0.0-rc.13, registered in `prisma.config.ts` and the client; the HNSW index is hand-written in the migration
+6. ~~How Prisma 8 connects to Neon on Vercel and in Neon Functions~~ Resolved: the same `postgres()` runtime over `pg` with the pooled `DATABASE_URL` in both; the Neon Function bundles `packages/db` as TypeScript source. pgvector comes from `@prisma/orm-extension-pgvector` 8.0.0-rc.13, registered in `prisma.config.ts` and the client; the HNSW index is hand-written in the migration. Neon's pooler rejects the startup options Prisma sends when it builds its own pool from a URL, so `packages/db` passes its own `pg.Pool` (with Prisma's 20 s connect / 30 s idle timeouts); migrations use `DATABASE_URL_UNPOOLED`
 7. ~~The embed script's bundler~~ Resolved: esbuild (see section 2). It is a single, fast devDependency with no config, and the loader is one small vanilla TypeScript file
 8. ~~Whether to use `neon.ts` + `neon deploy`~~ Resolved: yes, for the `jobs` function and its triggers (section 9)

@@ -1,0 +1,27 @@
+// use prisma-8
+
+enum MemberRole {
+  Owner = "owner"
+}
+
+model Workspace {
+  id        Uuid     @id @onCreate(uuid(7))
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @onCreate(now()) @onUpdate(now()) @map("updated_at")
+  members   Member[]
+
+  @@map("workspaces")
+}
+
+model Member {
+  id          Uuid       @id @onCreate(uuid(7))
+  workspaceId Uuid       @map("workspace_id")
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String     @unique @map("user_id")
+  role        MemberRole
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@map("members")
+}

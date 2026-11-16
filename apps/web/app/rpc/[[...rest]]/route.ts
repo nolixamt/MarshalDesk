@@ -1,16 +1,20 @@
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
+import { errorStatusMap } from "@/lib/orpc/errors";
+import {
+  logUnexpectedError,
+  rejectCrossOrigin,
+} from "@/lib/orpc/handler-guards";
 import { router } from "@/lib/orpc/router";
 
 const handler = new RPCHandler(router, {
-  interceptors: [
-    onError((error) => {
-      console.error(error);
-    }),
-  ],
+  errorStatusMap,
+  interceptors: [onError(logUnexpectedError)],
 });
 
 async function handleRequest(request: Request) {
+  const rejected = rejectCrossOrigin(request);
+  if (rejected) return rejected;
   const { matched, response } = await handler.handle(request, {
     prefix: "/rpc",
     context: { headers: request.headers },

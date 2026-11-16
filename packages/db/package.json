@@ -1,0 +1,28 @@
+{
+  "name": "@marshaldesk/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "contract:emit": "prisma contract emit",
+    "migrate:plan": "prisma migration plan",
+    "migrate:dev": "prisma db migrate"
+  },
+  "dependencies": {
+    "@prisma/orm-family-sql": "8.0.0-rc.23",
+    "@prisma/orm-postgres": "8.0.0-rc.23",
+    "pg": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/pg": "8.20.4",
+    "dotenv": "^17.4.2",
+    "prisma": "8.0.0-rc.33",
+    "typescript": "5.9.3"
+  }
+}

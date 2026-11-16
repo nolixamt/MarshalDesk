@@ -281,5 +281,4 @@ Lucide only (`lucide-react`, the shadcn default). No icon fonts, no brand icon p
 - **Background video hosting.** The video is served from a third-party CloudFront URL. Move it to our own object storage before launch, and add a poster image.
 - **Logo.** `LogoMark` is a placeholder.
 - **Nav targets.** Product, How it works, and Contact point to anchors that don't exist yet.
-- **Auth links.** Sign in and Get started point to `/dashboard` until the auth pages exist (`landing/content.tsx`).
-- **Not built yet.** The `form-*` button variants, `Input variant="ink"`, the auth shell and everything under "Dashboard pages" arrive with the auth and dashboard chapters.
+- **Not built yet.** Everything under "Dashboard pages" beyond the shell, the Home and Inbox placeholders arrives with later chapters.
