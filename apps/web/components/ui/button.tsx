@@ -19,6 +19,12 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         glow: "rounded-full bg-white font-semibold text-black shadow-glow transition-[translate,scale,box-shadow] duration-300 ease-out-expo hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-glow-strong focus-visible:ring-white/60",
         ink: "rounded-full bg-ink text-ink-foreground shadow-soft transition-[translate,background-color,color] duration-300 ease-out-expo hover:-translate-y-px hover:bg-ink-hover hover:text-white aria-expanded:bg-ink-hover focus-visible:ring-white/40",
+        "form-primary":
+          "relative z-10 bg-white font-semibold text-black shadow-glow transition-[scale,box-shadow,opacity] duration-150 ease-out hover:shadow-glow-strong focus-visible:ring-white/60 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-[0.97]",
+        "form-secondary":
+          "bg-ink text-ink-foreground shadow-soft transition-[scale,background-color,color] duration-150 ease-out hover:bg-ink-hover hover:text-white focus-visible:ring-white/40 active:not-aria-[haspopup]:translate-y-0 active:not-aria-[haspopup]:scale-[0.97]",
+        "form-ghost":
+          "text-ink-foreground/60 transition-[color,background-color] hover:bg-white/5 hover:text-white focus-visible:ring-white/40 active:not-aria-[haspopup]:translate-y-0",
         nav: "relative rounded-full font-medium tracking-[-0.01em] text-nav-foreground opacity-50 transition-opacity hover:opacity-75 aria-[current=page]:opacity-100 after:absolute after:bottom-[5px] after:left-1/2 after:hidden after:size-[3px] after:-translate-x-1/2 after:rounded-full after:bg-black after:shadow-[-5px_0_0_#000,5px_0_0_#000] aria-[current=page]:after:block focus-visible:ring-black/20",
       },
       size: {
@@ -36,6 +42,7 @@ const buttonVariants = cva(
         pill: "h-[clamp(44px,5.2vw,48px)] rounded-full px-[clamp(18px,2vw,22px)] text-[clamp(13px,1.4vw,15px)]",
         cta: "h-auto rounded-full px-[clamp(22px,3vw,28px)] py-[clamp(11px,1.6vh,13px)] text-[clamp(13.5px,1.5vw,14.5px)]",
         "icon-pill": "size-12 rounded-full",
+        field: "h-12 gap-2 rounded-lg px-4 text-sm",
         nav: "h-10 px-[clamp(10px,1.4vw,14px)] text-[clamp(13px,1.4vw,15px)]",
       },
     },
