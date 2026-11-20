@@ -12,6 +12,9 @@ export function Dropzone({
   onFiles,
   title = "Drop files here",
   hint,
+  compact = false,
+  multiple = true,
+  disabled = false,
   className,
 }: {
   accept: string;
@@ -19,6 +22,9 @@ export function Dropzone({
   onFiles: (accepted: File[], rejected: RejectedFile[]) => void;
   title?: string;
   hint?: string;
+  compact?: boolean;
+  multiple?: boolean;
+  disabled?: boolean;
   className?: string;
 }) {
   const inputId = useId();
@@ -44,19 +50,23 @@ export function Dropzone({
   return (
     <label
       htmlFor={inputId}
+      aria-disabled={disabled || undefined}
       onDragEnter={(event) => {
         event.preventDefault();
-        setDragging(true);
+        if (!disabled) setDragging(true);
       }}
       onDragOver={(event) => event.preventDefault()}
       onDragLeave={() => setDragging(false)}
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        handleFiles(event.dataTransfer.files);
+        if (!disabled) handleFiles(event.dataTransfer.files);
       }}
       className={cn(
-        "flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-foreground/20 px-4 py-8 text-center transition-colors *:pointer-events-none hover:bg-muted/60 has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+        "flex cursor-pointer rounded-lg border border-dashed border-foreground/20 transition-colors *:pointer-events-none hover:bg-muted/60 has-focus-visible:ring-3 has-focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:hover:bg-transparent",
+        compact
+          ? "items-center gap-3 px-3 py-2.5 text-left"
+          : "flex-col items-center gap-1.5 px-4 py-8 text-center",
         dragging && "border-primary bg-muted",
         className,
       )}
@@ -64,7 +74,8 @@ export function Dropzone({
       <input
         id={inputId}
         type="file"
-        multiple
+        multiple={multiple}
+        disabled={disabled}
         accept={accept}
         className="sr-only"
         onChange={(event) => {
@@ -72,16 +83,45 @@ export function Dropzone({
           event.target.value = "";
         }}
       />
-      <span className="mb-1 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <UploadIcon className="size-5" />
-      </span>
-      <span className="text-sm font-medium">
-        {dragging ? "Drop to add" : title}{" "}
-        <span className="font-normal text-muted-foreground">
-          or <span className="text-foreground underline">choose files</span>
-        </span>
-      </span>
-      {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      {compact ? (
+        <>
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <UploadIcon className="size-4" />
+          </span>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-sm font-medium">
+              {dragging ? "Drop to add" : title}{" "}
+              <span className="font-normal text-muted-foreground">
+                or{" "}
+                <span className="text-foreground underline">
+                  {multiple ? "choose files" : "choose a file"}
+                </span>
+              </span>
+            </span>
+            {hint && (
+              <span className="text-xs text-muted-foreground">{hint}</span>
+            )}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="mb-1 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <UploadIcon className="size-5" />
+          </span>
+          <span className="text-sm font-medium">
+            {dragging ? "Drop to add" : title}{" "}
+            <span className="font-normal text-muted-foreground">
+              or{" "}
+              <span className="text-foreground underline">
+                {multiple ? "choose files" : "choose a file"}
+              </span>
+            </span>
+          </span>
+          {hint && (
+            <span className="text-xs text-muted-foreground">{hint}</span>
+          )}
+        </>
+      )}
     </label>
   );
 }

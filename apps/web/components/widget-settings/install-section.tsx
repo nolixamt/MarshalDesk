@@ -1,6 +1,8 @@
+"use client";
+
 import { CodeBlock } from "@/components/dashboard/code-block";
 import { SettingsSection } from "@/components/dashboard/settings-section";
-import { mockWorkspaceId } from "@/lib/mock/widget-settings";
+import { useWidgetSettings } from "@/components/dashboard/widget-settings-context";
 
 function installSnippet(appUrl: string, workspaceId: string): string {
   return [
@@ -13,6 +15,7 @@ function installSnippet(appUrl: string, workspaceId: string): string {
 }
 
 export function InstallSection() {
+  const { workspaceId } = useWidgetSettings();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   return (
@@ -30,7 +33,7 @@ export function InstallSection() {
           tag on every page where the widget should appear.
         </p>
         <CodeBlock
-          code={installSnippet(appUrl, mockWorkspaceId)}
+          code={installSnippet(appUrl, workspaceId)}
           label="Copy snippet"
         />
       </div>

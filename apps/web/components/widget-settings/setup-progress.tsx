@@ -4,9 +4,7 @@ import type { SetupStepId } from "@marshaldesk/shared";
 import { cn } from "cn";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 
-import { useKnowledge } from "@/components/dashboard/knowledge-context";
 import { useWidgetSettings } from "@/components/dashboard/widget-settings-context";
-import { mockSetupProgress } from "@/lib/mock/widget-settings";
 
 type Step = { id: SetupStepId; title: string; href: string; done: boolean };
 
@@ -29,13 +27,12 @@ function stepCopy(id: SetupStepId): { title: string; href: string } {
 }
 
 export function SetupProgress() {
-  const { settings } = useWidgetSettings();
-  const { hasReadySource } = useKnowledge();
+  const { settings, setupProgress } = useWidgetSettings();
 
   const done: Record<SetupStepId, boolean> = {
-    source: hasReadySource,
+    source: setupProgress.hasReadySource,
     domain: settings.allowedDomains.length > 0,
-    snippet: mockSetupProgress.snippetInstalled,
+    snippet: setupProgress.snippetInstalled,
   };
   const steps: Step[] = (["source", "domain", "snippet"] as const).map(
     (id) => ({ id, ...stepCopy(id), done: done[id] }),
