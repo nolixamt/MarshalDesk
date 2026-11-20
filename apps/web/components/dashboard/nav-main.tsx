@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 import { isNavItemActive, navItems } from "./nav-items";
 import { railButtonClassName, railTooltipClassName } from "./rail";
@@ -31,7 +32,10 @@ export function NavMain() {
                     children: item.title,
                     className: railTooltipClassName,
                   }}
-                  className={railButtonClassName}
+                  className={cn(
+                    railButtonClassName,
+                    "data-active:[&_svg]:text-primary",
+                  )}
                   render={
                     <Link
                       href={item.href}
