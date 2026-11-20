@@ -3,6 +3,7 @@
 import type { Conversation } from "@marshaldesk/shared";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { visitorAvatarUrl } from "@/lib/avatars";
@@ -39,6 +40,8 @@ export function ConversationList({
   onFilterChange,
   selectedId,
   onSelect,
+  loadFailed,
+  onRetry,
   now,
 }: {
   conversations: Conversation[];
@@ -48,6 +51,8 @@ export function ConversationList({
   onFilterChange: (filter: InboxFilter) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  loadFailed: boolean;
+  onRetry: () => void;
   now: number;
 }) {
   return (
@@ -89,7 +94,14 @@ export function ConversationList({
         </ToggleGroup>
       </div>
 
-      {conversations.length === 0 ? (
+      {loadFailed ? (
+        <div className="flex flex-col items-center gap-3 px-4 py-10 text-center text-sm text-muted-foreground">
+          <p>Couldn&apos;t load your conversations.</p>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Retry
+          </Button>
+        </div>
+      ) : conversations.length === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-muted-foreground">
           {emptyMessage(filter)}
         </p>

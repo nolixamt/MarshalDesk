@@ -67,7 +67,7 @@ export function WidgetComposer({
           }}
           placeholder="Write a message…"
           aria-label="Message"
-          className="field-sizing-content max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+          className="field-sizing-content max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
         />
         <IconButton
           label="Send"

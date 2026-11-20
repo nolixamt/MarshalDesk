@@ -5,11 +5,13 @@ import {
   type ClientRoomMessage,
   type ConversationRoomEvent,
 } from "@marshaldesk/shared";
+import type { PartySocket } from "partysocket";
 import { usePartySocket } from "partysocket/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { client } from "@/lib/orpc/client";
 import { REALTIME_HOST } from "@/lib/realtime/host";
+import { useTokenRejection } from "@/lib/use-token-rejection";
 
 // The visitor's widget sends a typing refresh while they type; this hides a stale indicator.
 const VISITOR_TYPING_TIMEOUT_MS = 5_000;
@@ -71,34 +73,16 @@ export function useConversationRoom(conversationId: string | null) {
     }
   }
 
-  const socket = usePartySocket({
-    host: REALTIME_HOST,
-    party: "conversation",
-    room: conversationId ?? IDLE_ROOM,
-    enabled: conversationId !== null,
-    query: async () => {
-      if (!conversationId) return {};
-      const { token } = await client.realtime.getToken({
-        party: "conversation",
-        conversationId,
-      });
-      return { token };
-    },
-    onMessage: (message) => {
-      const event = parseEvent(message.data);
-      if (event) handleEvent(event);
-    },
-  });
+  // Read at send time, so the cleanup below can still reach the socket of the room being left.
+  const socketRef = useRef<PartySocket | null>(null);
 
-  const send = useCallback(
-    (typing: boolean) => {
-      // Typing is only meaningful now, so it's dropped rather than queued while disconnected.
-      if (socket.readyState !== WebSocket.OPEN) return;
-      const message: ClientRoomMessage = { type: "typing", typing };
-      socket.send(JSON.stringify(message));
-    },
-    [socket],
-  );
+  const send = useCallback((typing: boolean) => {
+    const socket = socketRef.current;
+    // Typing is only meaningful now, so it's dropped rather than queued while disconnected.
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    const message: ClientRoomMessage = { type: "typing", typing };
+    socket.send(JSON.stringify(message));
+  }, []);
 
   const stopTyping = useCallback(() => {
     if (idleTimer.current !== null) window.clearTimeout(idleTimer.current);
@@ -120,7 +104,35 @@ export function useConversationRoom(conversationId: string | null) {
     idleTimer.current = window.setTimeout(stopTyping, TYPING_IDLE_MS);
   }, [send, stopTyping]);
 
+  // Declared before the socket hook so this cleanup runs first, while the old room's socket is
+  // still open: partysocket closes it when the room changes.
   useEffect(() => stopTyping, [conversationId, stopTyping]);
+
+  const { rejected, guard } = useTokenRejection(conversationId);
+  const socket = usePartySocket({
+    host: REALTIME_HOST,
+    party: "conversation",
+    room: conversationId ?? IDLE_ROOM,
+    enabled: conversationId !== null && !rejected,
+    query: async () => {
+      if (!conversationId) return {};
+      const { token } = await guard(() =>
+        client.realtime.getToken({
+          party: "conversation",
+          conversationId,
+        }),
+      );
+      return { token };
+    },
+    onMessage: (message) => {
+      const event = parseEvent(message.data);
+      if (event) handleEvent(event);
+    },
+  });
+
+  useEffect(() => {
+    socketRef.current = socket;
+  }, [socket]);
 
   useEffect(
     () => () => {

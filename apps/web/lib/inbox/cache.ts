@@ -17,6 +17,21 @@ export function conversationKey(id: string) {
   return orpc.inbox.get.queryKey({ input: { id } });
 }
 
+// Events and mutation responses arrive in any order, so an older snapshot never replaces a newer one.
+function isOlder(incoming: string, cached: string): boolean {
+  return Date.parse(incoming) < Date.parse(cached);
+}
+
+function newer(cached: Conversation, incoming: Conversation): Conversation {
+  return isOlder(incoming.updatedAt, cached.updatedAt) ? cached : incoming;
+}
+
+function byCreatedAt(a: Message, b: Message): number {
+  const order = Date.parse(a.createdAt) - Date.parse(b.createdAt);
+  if (order !== 0) return order;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
 export function upsertConversation(
   queryClient: QueryClient,
   conversation: Conversation,
@@ -26,10 +41,14 @@ export function upsertConversation(
     if (!list.some((c) => c.id === conversation.id)) {
       return [conversation, ...list];
     }
-    return list.map((c) => (c.id === conversation.id ? conversation : c));
+    return list.map((c) =>
+      c.id === conversation.id ? newer(c, conversation) : c,
+    );
   });
   queryClient.setQueryData(conversationKey(conversation.id), (detail) =>
-    detail ? { ...detail, conversation } : detail,
+    detail
+      ? { ...detail, conversation: newer(detail.conversation, conversation) }
+      : detail,
   );
 }
 
@@ -38,13 +57,15 @@ export function patchConversation(
   id: string,
   patch: Partial<Omit<Conversation, "id">>,
 ): void {
+  const apply = (cached: Conversation): Conversation =>
+    patch.updatedAt && isOlder(patch.updatedAt, cached.updatedAt)
+      ? cached
+      : { ...cached, ...patch };
   queryClient.setQueryData(inboxListKey(), (list) =>
-    list?.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    list?.map((c) => (c.id === id ? apply(c) : c)),
   );
   queryClient.setQueryData(conversationKey(id), (detail) =>
-    detail
-      ? { ...detail, conversation: { ...detail.conversation, ...patch } }
-      : detail,
+    detail ? { ...detail, conversation: apply(detail.conversation) } : detail,
   );
 }
 
@@ -58,7 +79,10 @@ export function appendMessage(
       if (!detail || detail.messages.some((m) => m.id === message.id)) {
         return detail;
       }
-      return { ...detail, messages: [...detail.messages, message] };
+      return {
+        ...detail,
+        messages: [...detail.messages, message].sort(byCreatedAt),
+      };
     },
   );
 }
@@ -84,7 +108,10 @@ export function receiveMessage(
         pendingIndex === -1
           ? detail.messages
           : detail.messages.filter((_, index) => index !== pendingIndex);
-      return { ...detail, messages: [...messages, message] };
+      return {
+        ...detail,
+        messages: [...messages, message].sort(byCreatedAt),
+      };
     },
   );
 }

@@ -17,7 +17,10 @@ import {
 } from "react";
 
 import { WidgetLauncher } from "@/components/widget/widget-launcher";
-import { WidgetMessage } from "@/components/widget/widget-message";
+import {
+  WidgetMessage,
+  WidgetNotice,
+} from "@/components/widget/widget-message";
 import { WidgetPanel } from "@/components/widget/widget-panel";
 import { WidgetSuggestedQuestions } from "@/components/widget/widget-suggested-questions";
 import { WidgetTypingIndicator } from "@/components/widget/widget-typing-indicator";
@@ -81,6 +84,7 @@ export function WidgetApp({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [humanRequestFailed, setHumanRequestFailed] = useState(false);
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [initialIds, setInitialIds] = useState<ReadonlySet<string> | null>(
     null,
@@ -213,8 +217,9 @@ export function WidgetApp({
   }
 
   function requestHuman() {
+    setHumanRequestFailed(false);
     void withVisitor(() => widgetClient.widget.requestHuman())
-      .catch(() => null)
+      .catch(() => setHumanRequestFailed(true))
       .then(() => queryClient.invalidateQueries({ queryKey: threadKey }));
   }
 
@@ -230,18 +235,18 @@ export function WidgetApp({
       accent,
     ),
   } as const;
+  const threadFailed = thread.isError && !thread.data;
   const startsNewConversation =
     conversation === null || conversation.state === "closed";
   const showDraftGreeting =
-    messages.length === 0 || (startsNewConversation && pending.length > 0);
+    !threadFailed &&
+    (messages.length === 0 || (startsNewConversation && pending.length > 0));
   const hasVisitorMessage =
     pending.length > 0 ||
     messages.some((message) => message.author === "visitor");
-  const showSuggestedQuestions = config.agentOn && !hasVisitorMessage;
-  const canAskForHuman =
-    config.agentOn &&
-    conversation?.state !== "waiting" &&
-    conversation?.state !== "human";
+  const showSuggestedQuestions =
+    config.agentOn && !threadFailed && !hasVisitorMessage;
+  const canAskForHuman = config.agentOn && conversation?.state === "ai";
   const fullScreen = open && mobile;
 
   return (
@@ -273,6 +278,18 @@ export function WidgetApp({
           autoFocus={!mobile}
           bodyRef={bodyRef}
         >
+          {threadFailed && (
+            <WidgetNotice>
+              Couldn&apos;t load your messages.{" "}
+              <button
+                type="button"
+                onClick={() => void thread.refetch()}
+                className="font-medium underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                Try again
+              </button>
+            </WidgetNotice>
+          )}
           {messages.map((message) => (
             <WidgetThreadMessage
               key={message.id}
@@ -300,6 +317,11 @@ export function WidgetApp({
                 latestMemberMessage(conversation.id, messages),
               )}
             />
+          )}
+          {humanRequestFailed && canAskForHuman && (
+            <WidgetNotice>
+              Couldn&apos;t reach a person just now. Try again in a moment.
+            </WidgetNotice>
           )}
           {pending.map((item) => (
             <WidgetMessage

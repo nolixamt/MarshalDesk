@@ -29,6 +29,7 @@ import {
 import { playNotificationSound } from "@/lib/notification-sound";
 import { client, orpc } from "@/lib/orpc/client";
 import { REALTIME_HOST } from "@/lib/realtime/host";
+import { useTokenRejection } from "@/lib/use-token-rejection";
 
 import { useWidgetSettings } from "./widget-settings-context";
 
@@ -166,13 +167,17 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const { rejected, guard } = useTokenRejection(workspaceId);
   usePartySocket({
     host: REALTIME_HOST,
     party: "workspace",
     room: workspaceId,
+    enabled: !rejected,
     // Tokens live 60 s and only open the socket, so every (re)connect fetches a fresh one.
     query: async () => ({
-      token: (await client.realtime.getToken({ party: "workspace" })).token,
+      token: (
+        await guard(() => client.realtime.getToken({ party: "workspace" }))
+      ).token,
     }),
     // Events sent while the socket was down are lost; the API is the store, so resync from it.
     onOpen: () => void resyncInbox(queryClient),

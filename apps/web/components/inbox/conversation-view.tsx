@@ -24,6 +24,8 @@ const NOTICE_MS = 6_000;
 export function ConversationView({
   conversation,
   messages,
+  loadFailed,
+  onRetry,
   arrivedIds,
   agent,
   owner,
@@ -40,6 +42,8 @@ export function ConversationView({
 }: {
   conversation: Conversation;
   messages: Message[] | undefined;
+  loadFailed: boolean;
+  onRetry: () => void;
   arrivedIds: ReadonlySet<string>;
   agent: Participant;
   owner: Participant;
@@ -162,6 +166,13 @@ export function ConversationView({
                 now={now}
               />
             ))
+          ) : loadFailed ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center text-sm text-muted-foreground">
+              <p>Couldn&apos;t load this conversation.</p>
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                Retry
+              </Button>
+            </div>
           ) : (
             <MessagesSkeleton />
           )}

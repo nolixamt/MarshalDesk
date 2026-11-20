@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { playNotificationSound } from "@/lib/notification-sound";
 import { REALTIME_HOST } from "@/lib/realtime/host";
+import { useTokenRejection } from "@/lib/use-token-rejection";
 import { widgetClient, withVisitor } from "@/lib/widget/client";
 import {
   addMessageToThread,
@@ -71,15 +72,18 @@ export function useConversationRoom({
     setMemberTyping(false);
   }, []);
 
+  const { rejected, guard } = useTokenRejection(conversationId);
   const socket = usePartySocket({
     host: REALTIME_HOST,
     party: "conversation",
     room: conversationId ?? "none",
-    enabled: enabled && conversationId !== null,
+    enabled: enabled && conversationId !== null && !rejected,
     // The socket is rebuilt per room, so this closure always asks for the room it opens.
     query: async () => {
-      const result = await withVisitor(() =>
-        widgetClient.widget.getRealtimeToken({ conversationId }),
+      const result = await guard(() =>
+        withVisitor(() =>
+          widgetClient.widget.getRealtimeToken({ conversationId }),
+        ),
       );
       if (!result) throw new Error("No conversation to follow yet");
       return { token: result.token };
@@ -98,7 +102,9 @@ export function useConversationRoom({
             ?.messages.some((entry) => entry.id === message.id);
           if (message.author === "member") {
             clearMemberTyping();
-            if (!known && document.hidden) playNotificationSound();
+            if (!known && (document.hidden || !document.hasFocus())) {
+              playNotificationSound();
+            }
           }
           void writeThread((thread) => addMessageToThread(thread, message));
           return;
