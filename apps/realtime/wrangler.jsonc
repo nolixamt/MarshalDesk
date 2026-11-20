@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "marshaldesk-realtime",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  // Binding name = class name, so the parties are /parties/conversation and /parties/workspace.
+  "durable_objects": {
+    "bindings": [
+      { "name": "Conversation", "class_name": "Conversation" },
+      { "name": "Workspace", "class_name": "Workspace" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Conversation", "Workspace"] },
+  ],
+  // Secrets (REALTIME_TOKEN_SECRET, REALTIME_PUBLISH_SECRET): .dev.vars locally,
+  // `wrangler secret put` for deployed Workers.
+}

@@ -5,3 +5,4 @@ export * from "./knowledge";
 export * from "./widget";
 export * from "./embed-protocol";
 export * from "./widget-chat";
+export * from "./realtime";

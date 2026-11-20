@@ -1,0 +1,23 @@
+{
+  "name": "@marshaldesk/realtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy:dev": "wrangler deploy --name marshaldesk-realtime-dev",
+    "types": "wrangler types",
+    "lint": "eslint .",
+    "typecheck": "wrangler types --check && tsc --noEmit"
+  },
+  "dependencies": {
+    "@marshaldesk/shared": "workspace:*",
+    "jose": "6.2.18",
+    "partyserver": "0.5.10",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "wrangler": "4.165.0"
+  }
+}

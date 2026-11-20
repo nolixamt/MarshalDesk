@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./embed-protocol": "./src/embed-protocol.ts"
+    "./embed-protocol": "./src/embed-protocol.ts",
+    "./realtime": "./src/realtime.ts"
   },
   "scripts": {
     "lint": "eslint .",
