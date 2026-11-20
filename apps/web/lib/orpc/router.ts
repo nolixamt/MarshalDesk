@@ -285,7 +285,7 @@ export const router = os.router({
           visitorId: context.visitor.id,
           body: input.body,
           greeting: settings.greeting,
-          agentOn: isAgentOn(settings),
+          agentOn: isAgentOn(),
           agentOffNotice: AGENT_OFF_NOTICE,
         });
         // The agent pipeline (next chapter) starts here, after the save, without blocking.

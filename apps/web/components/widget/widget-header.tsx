@@ -19,7 +19,7 @@ export function WidgetHeader({
   return (
     <header className="flex items-center gap-3 border-b border-foreground/10 px-4 py-3">
       <Avatar size="lg">
-        <AvatarImage src={avatarUrl} alt="" />
+        <AvatarImage src={avatarUrl} alt="" referrerPolicy="no-referrer" />
         <AvatarFallback>{agentName.slice(0, 1).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">

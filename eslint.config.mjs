@@ -21,5 +21,6 @@ export default defineConfig([
     "**/build/**",
     "**/dist/**",
     "**/next-env.d.ts",
+    "apps/web/public/embed.js",
   ]),
 ]);

@@ -31,12 +31,12 @@ import {
 } from "@/lib/widget-settings/state";
 
 // The knowledge base arrives next chapter; until then every workspace runs with the agent off.
-export function isAgentOn(_row: WidgetSettingsRow): boolean {
+export function isAgentOn(): boolean {
   return false;
 }
 
 export function toWidgetConfig(row: WidgetSettingsRow): WidgetConfig {
-  const agentOn = isAgentOn(row);
+  const agentOn = isAgentOn();
   return {
     workspaceId: row.workspaceId,
     agentName: resolvedAgentName(row),
