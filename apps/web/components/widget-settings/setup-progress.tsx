@@ -4,6 +4,7 @@ import type { SetupStepId } from "@marshaldesk/shared";
 import { cn } from "cn";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 
+import { useKnowledge } from "@/components/dashboard/knowledge-context";
 import { useWidgetSettings } from "@/components/dashboard/widget-settings-context";
 import { mockSetupProgress } from "@/lib/mock/widget-settings";
 
@@ -12,7 +13,10 @@ type Step = { id: SetupStepId; title: string; href: string; done: boolean };
 function stepCopy(id: SetupStepId): { title: string; href: string } {
   switch (id) {
     case "source":
-      return { title: "Add a source to your knowledge base", href: "#" };
+      return {
+        title: "Add a source to your knowledge base",
+        href: "#knowledge",
+      };
     case "domain":
       return { title: "Add an allowed domain", href: "#allowed-domains" };
     case "snippet":
@@ -26,9 +30,10 @@ function stepCopy(id: SetupStepId): { title: string; href: string } {
 
 export function SetupProgress() {
   const { settings } = useWidgetSettings();
+  const { hasReadySource } = useKnowledge();
 
   const done: Record<SetupStepId, boolean> = {
-    source: mockSetupProgress.hasReadySource,
+    source: hasReadySource,
     domain: settings.allowedDomains.length > 0,
     snippet: mockSetupProgress.snippetInstalled,
   };

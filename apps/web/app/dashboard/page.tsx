@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AgentSection } from "@/components/widget-settings/agent-section";
 import { AllowedDomainsSection } from "@/components/widget-settings/allowed-domains-section";
 import { AppearanceSection } from "@/components/widget-settings/appearance-section";
+import { KnowledgeSection } from "@/components/widget-settings/knowledge-section";
 import { InstallSection } from "@/components/widget-settings/install-section";
 import { SetupProgress } from "@/components/widget-settings/setup-progress";
 import { WidgetPreview } from "@/components/widget-settings/widget-preview";
@@ -22,6 +23,7 @@ export default function DashboardHomePage() {
           <SetupProgress />
           <AppearanceSection />
           <AgentSection />
+          <KnowledgeSection />
           <AllowedDomainsSection />
           <InstallSection />
         </div>
