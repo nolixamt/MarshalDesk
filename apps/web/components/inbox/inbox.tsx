@@ -7,8 +7,15 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
+import { useInboxPresence } from "@/components/dashboard/realtime-provider";
 import { useWidgetSettings } from "@/components/dashboard/widget-settings-context";
 import {
   ResizableHandle,
@@ -26,10 +33,6 @@ import { matchesFilter, type InboxFilter } from "./filters";
 import { sortConversations } from "./labels";
 import { useConversationActions } from "./use-conversation-actions";
 import { VisitorDetails } from "./visitor-details";
-
-const LIST_POLL_MS = 5_000;
-const CONVERSATION_POLL_MS = 3_000;
-const POLL_STALE_MS = 2_000;
 
 const handleClassName =
   "w-3 bg-transparent after:w-1 focus-visible:ring-0 [&>div]:opacity-0 hover:[&>div]:opacity-100 focus-visible:[&>div]:opacity-100 data-[separator=active]:[&>div]:opacity-100 [&>div]:transition-opacity";
@@ -115,16 +118,12 @@ export function Inbox({
 
   const { data: conversations = [] } = useQuery({
     ...orpc.inbox.list.queryOptions(),
-    staleTime: POLL_STALE_MS,
-    refetchInterval: actions.pending ? false : LIST_POLL_MS,
     refetchOnWindowFocus: true,
   });
   const { data: detail, isError: detailFailed } = useQuery({
     ...orpc.inbox.get.queryOptions({
       input: selectedId ? { id: selectedId } : skipToken,
     }),
-    staleTime: POLL_STALE_MS,
-    refetchInterval: actions.pending ? false : CONVERSATION_POLL_MS,
     refetchOnWindowFocus: true,
     retry: false,
   });
@@ -152,12 +151,32 @@ export function Inbox({
   const selectedUnread = Boolean(
     listed?.unread || loadedDetail?.conversation.unread,
   );
+  const selectedLastMessageAt = selected?.lastMessageAt ?? null;
+  // The newest message each markRead covered. A refetch that started before a markRead landed can
+  // still say unread; that only needs the local patch, not another request.
+  const markedThrough = useRef(new Map<string, string>());
 
   useEffect(() => {
     if (!selectedId || !selectedUnread || !pageVisible) return;
     patchConversation(queryClient, selectedId, { unread: false });
-    markRead({ id: selectedId });
-  }, [selectedId, selectedUnread, pageVisible, queryClient, markRead]);
+    if (!selectedLastMessageAt) return;
+    const marked = markedThrough.current.get(selectedId);
+    if (marked && Date.parse(marked) >= Date.parse(selectedLastMessageAt)) {
+      return;
+    }
+    markedThrough.current.set(selectedId, selectedLastMessageAt);
+    markRead(
+      { id: selectedId },
+      { onError: () => markedThrough.current.delete(selectedId) },
+    );
+  }, [
+    selectedId,
+    selectedUnread,
+    selectedLastMessageAt,
+    pageVisible,
+    queryClient,
+    markRead,
+  ]);
 
   const visible = useMemo(
     () =>
@@ -170,6 +189,12 @@ export function Inbox({
     actions.dismissNotice();
     writeSelectionToUrl(id);
   }
+
+  useInboxPresence(selectedId, (id) => {
+    const target = conversations.find((c) => c.id === id);
+    if (target && !matchesFilter(target, filter)) setFilter("open");
+    select(id);
+  });
 
   function changeFilter(next: InboxFilter) {
     setFilter(next);

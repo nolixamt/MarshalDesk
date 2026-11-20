@@ -12,9 +12,13 @@ const COUNTER_FROM = MESSAGE_MAX_LENGTH - 500;
 export function Composer({
   takesOver,
   onSend,
+  onTyping,
+  onStopTyping,
 }: {
   takesOver: boolean;
   onSend: (body: string) => Promise<void>;
+  onTyping: () => void;
+  onStopTyping: () => void;
 }) {
   const [body, setBody] = useState("");
   const parsed = replyInputSchema.safeParse({ body });
@@ -23,6 +27,7 @@ export function Composer({
     if (!parsed.success) return;
     const sent = body;
     setBody("");
+    onStopTyping();
     onSend(parsed.data.body).catch(() => {
       setBody((current) => (current === "" ? sent : current));
     });
@@ -41,7 +46,13 @@ export function Composer({
           aria-label="Reply"
           value={body}
           maxLength={MESSAGE_MAX_LENGTH}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setBody(next);
+            if (next.trim() === "") onStopTyping();
+            else onTyping();
+          }}
+          onBlur={onStopTyping}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&

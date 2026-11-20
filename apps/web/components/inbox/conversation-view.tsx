@@ -16,6 +16,8 @@ import { handoffReasonLabel, visitorName } from "./labels";
 import { MessageItem, type Participant } from "./message-item";
 import { StateBadge } from "./state-badge";
 import { canTransition } from "./transitions";
+import { TypingIndicator } from "./typing-indicator";
+import { useConversationRoom } from "./use-conversation-room";
 
 const NOTICE_MS = 6_000;
 
@@ -54,13 +56,17 @@ export function ConversationView({
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   const { state } = conversation;
+  const { visitorTyping, notifyTyping, stopTyping } = useConversationRoom(
+    state === "closed" ? null : conversation.id,
+  );
+  const name = visitorName(conversation.visitor);
 
   useLayoutEffect(() => {
     const viewport = endRef.current?.closest<HTMLElement>(
       "[data-slot=scroll-area-viewport]",
     );
     if (viewport) viewport.scrollTop = viewport.scrollHeight;
-  }, [conversation.id, messages?.length]);
+  }, [conversation.id, messages?.length, visitorTyping]);
 
   useEffect(() => {
     if (!notice) return;
@@ -84,9 +90,7 @@ export function ConversationView({
           </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="truncate text-sm font-semibold">
-                {visitorName(conversation.visitor)}
-              </h2>
+              <h2 className="truncate text-sm font-semibold">{name}</h2>
               <StateBadge state={state} />
             </div>
             {state === "waiting" && conversation.handoffReason ? (
@@ -161,6 +165,7 @@ export function ConversationView({
           ) : (
             <MessagesSkeleton />
           )}
+          {messages && visitorTyping ? <TypingIndicator name={name} /> : null}
           <div ref={endRef} />
         </div>
       </ScrollArea>
@@ -175,6 +180,8 @@ export function ConversationView({
           key={conversation.id}
           takesOver={state !== "human"}
           onSend={onReply}
+          onTyping={notifyTyping}
+          onStopTyping={stopTyping}
         />
       )}
     </section>

@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { getPageTitle } from "./nav-items";
+import { NotificationsControl } from "./notifications-control";
 import { ThemeToggle } from "./theme-toggle";
 
 export function SiteHeader() {
@@ -20,7 +21,8 @@ export function SiteHeader() {
           className="mx-1 h-4 data-vertical:self-auto"
         />
         <p className="text-sm font-medium">{getPageTitle(pathname)}</p>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <NotificationsControl />
           <ThemeToggle />
         </div>
       </div>

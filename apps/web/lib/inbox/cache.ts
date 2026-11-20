@@ -7,6 +7,8 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { orpc } from "@/lib/orpc/client";
 
+const PENDING_PREFIX = "pending-";
+
 export function inboxListKey() {
   return orpc.inbox.list.queryKey();
 }
@@ -59,6 +61,45 @@ export function appendMessage(
       return { ...detail, messages: [...detail.messages, message] };
     },
   );
+}
+
+/** A message from the real-time feed: replaces the optimistic copy of the owner's own reply. */
+export function receiveMessage(
+  queryClient: QueryClient,
+  message: Message,
+): void {
+  queryClient.setQueryData(
+    conversationKey(message.conversationId),
+    (detail) => {
+      if (!detail || detail.messages.some((m) => m.id === message.id)) {
+        return detail;
+      }
+      const pendingIndex =
+        message.author === "member"
+          ? detail.messages.findIndex(
+              (m) => isPendingMessage(m) && m.body === message.body,
+            )
+          : -1;
+      const messages =
+        pendingIndex === -1
+          ? detail.messages
+          : detail.messages.filter((_, index) => index !== pendingIndex);
+      return { ...detail, messages: [...messages, message] };
+    },
+  );
+}
+
+export function isPendingMessage(message: Message): boolean {
+  return message.id.startsWith(PENDING_PREFIX);
+}
+
+export function pendingMessageId(): string {
+  return `${PENDING_PREFIX}${crypto.randomUUID()}`;
+}
+
+/** Marks every inbox query stale and refetches the ones on screen. */
+export function resyncInbox(queryClient: QueryClient): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: orpc.inbox.key() });
 }
 
 export function removeMessage(
