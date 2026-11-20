@@ -44,7 +44,7 @@ function StatusContent({
       return (
         <>
           <CheckIcon aria-hidden className="size-3.5" />
-          All changes saved
+          Saved
         </>
       );
     case "error":

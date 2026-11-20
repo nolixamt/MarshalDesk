@@ -124,7 +124,21 @@ export function WidgetSettingsProvider({
 
       try {
         const state = await client.widgetSettings.update(sent);
-        queryClient.setQueryData(orpc.widgetSettings.get.queryKey(), state);
+        // Avatars only change through the avatar procedures, whose responses update the cache;
+        // an autosave that started before an upload would otherwise put the old avatar back.
+        queryClient.setQueryData(
+          orpc.widgetSettings.get.queryKey(),
+          (cached) =>
+            cached
+              ? {
+                  ...state,
+                  settings: {
+                    ...state.settings,
+                    agentAvatarUrl: cached.settings.agentAvatarUrl,
+                  },
+                }
+              : state,
+        );
         // Keep anything edited after this request started: only drop values the
         // server now holds exactly as sent.
         const confirmed = patchKeys(sent).filter(
