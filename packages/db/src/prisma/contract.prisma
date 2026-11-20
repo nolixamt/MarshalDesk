@@ -9,6 +9,34 @@ enum WidgetPosition {
   BottomLeft  = "bottom-left"
 }
 
+enum ConversationState {
+  Ai      = "ai"
+  Waiting = "waiting"
+  Human   = "human"
+  Closed  = "closed"
+}
+
+enum HandoffReason {
+  LowConfidence       = "low_confidence"
+  NoRelevantKnowledge = "no_relevant_knowledge"
+  VisitorRequested    = "visitor_requested"
+  AgentOff            = "agent_off"
+}
+
+enum MessageAuthor {
+  Visitor = "visitor"
+  Agent   = "agent"
+  Member  = "member"
+  System  = "system"
+}
+
+enum SystemNotice {
+  Greeting = "greeting"
+  AgentOff = "agent_off"
+  HandBack = "hand_back"
+  Closed   = "closed"
+}
+
 enum AccentColor {
   Blue   = "blue"
   Indigo = "indigo"
@@ -33,6 +61,9 @@ model Workspace {
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @onCreate(now()) @onUpdate(now()) @map("updated_at")
   members            Member[]
+  visitors           Visitor[]
+  conversations      Conversation[]
+  messages           Message[]
 
   @@map("workspaces")
 }
@@ -47,4 +78,67 @@ model Member {
 
   @@index([workspaceId])
   @@map("members")
+}
+
+model Visitor {
+  id            Uuid           @id @onCreate(uuid(7))
+  workspaceId   Uuid           @map("workspace_id")
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  // SHA-256 of the token's per-visitor secret; the token itself is never stored.
+  vskHash       String         @map("vsk_hash")
+  country       String?
+  city          String?
+  timezone      String?
+  language      String?
+  device        String?
+  browser       String?
+  os            String?
+  page          String?
+  referrer      String?
+  visitCount    Int            @default(1) @map("visit_count")
+  firstSeenAt   DateTime       @default(now()) @map("first_seen_at")
+  lastSeenAt    DateTime       @default(now()) @map("last_seen_at")
+  conversations Conversation[]
+
+  @@map("visitors")
+}
+
+model Conversation {
+  id                 Uuid              @id @onCreate(uuid(7))
+  workspaceId        Uuid              @map("workspace_id")
+  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  visitorId          Uuid              @map("visitor_id")
+  visitor            Visitor           @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  state              ConversationState
+  handoffReason      HandoffReason?    @map("handoff_reason")
+  // Unread by the owner: set by visitor messages, cleared when the owner opens it.
+  unread             Boolean           @default(false)
+  lastMessagePreview String            @default("") @map("last_message_preview")
+  lastMessageAt      DateTime          @default(now()) @map("last_message_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  closedAt           DateTime?         @map("closed_at")
+  messages           Message[]
+
+  @@index([workspaceId, lastMessageAt])
+  @@index([visitorId], unique: true, where: sql`state IN ('ai', 'waiting', 'human')`, name: "conversations_one_open_per_visitor")
+  @@map("conversations")
+}
+
+model Message {
+  id             Uuid          @id @onCreate(uuid(7))
+  workspaceId    Uuid          @map("workspace_id")
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversationId Uuid          @map("conversation_id")
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author         MessageAuthor
+  systemNotice   SystemNotice? @map("system_notice")
+  memberId       Uuid?         @map("member_id")
+  // Snapshot of the member's name and photo when they wrote it (Neon Auth owns the profile).
+  memberName     String?       @map("member_name")
+  memberImageUrl String?       @map("member_image_url")
+  body           String
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }

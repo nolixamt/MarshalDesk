@@ -38,6 +38,20 @@ export const messageAuthorSchema = z.enum([
 ]);
 export type MessageAuthor = z.infer<typeof messageAuthorSchema>;
 
+export const systemNoticeSchema = z.enum([
+  "greeting",
+  "agent_off",
+  "hand_back",
+  "closed",
+]);
+export type SystemNotice = z.infer<typeof systemNoticeSchema>;
+
+export const AGENT_OFF_NOTICE =
+  "You'll be connected to a person shortly. It can take a little while, so please hang on.";
+export const HAND_BACK_NOTICE = "You're now chatting with the AI agent.";
+export const CLOSED_NOTICE =
+  "This conversation has ended. Send a message to start a new one.";
+
 export const MESSAGE_MAX_LENGTH = 4000;
 
 export const visitorDetailsSchema = z.object({
@@ -86,7 +100,9 @@ export const messageSchema = z.object({
   id: z.string(),
   conversationId: z.string(),
   author: messageAuthorSchema,
+  systemNotice: systemNoticeSchema.nullable(),
   memberName: z.string().nullable(),
+  memberImageUrl: z.string().nullable(),
   body: z.string(),
   classification: classificationSchema.nullable(),
   declined: z.boolean(),
@@ -113,3 +129,25 @@ export const replyInputSchema = z.object({
   body: z.string().trim().min(1).max(MESSAGE_MAX_LENGTH),
 });
 export type ReplyInput = z.infer<typeof replyInputSchema>;
+
+export const conversationIdInputSchema = z.object({ id: z.uuid() });
+export type ConversationIdInput = z.infer<typeof conversationIdInputSchema>;
+
+export const inboxReplyInputSchema = conversationIdInputSchema.extend(
+  replyInputSchema.shape,
+);
+export type InboxReplyInput = z.infer<typeof inboxReplyInputSchema>;
+
+export const conversationWithMessagesSchema = z.object({
+  conversation: conversationSchema,
+  messages: z.array(messageSchema),
+});
+export type ConversationWithMessages = z.infer<
+  typeof conversationWithMessagesSchema
+>;
+
+export const conversationChangeSchema = z.object({
+  conversation: conversationSchema,
+  message: messageSchema.nullable(),
+});
+export type ConversationChange = z.infer<typeof conversationChangeSchema>;
