@@ -76,3 +76,27 @@ export function parseWorkspaceRoomEvent(
   const parsed = workspaceRoomEventSchema.safeParse(data);
   return parsed.success ? parsed.data : null;
 }
+
+export const realtimeTokenSchema = z.object({ token: z.string() });
+export type RealtimeToken = z.infer<typeof realtimeTokenSchema>;
+
+export const ownerRealtimeTokenInputSchema = z.discriminatedUnion("party", [
+  z.object({ party: z.literal("workspace") }),
+  z.object({ party: z.literal("conversation"), conversationId: z.uuid() }),
+]);
+export type OwnerRealtimeTokenInput = z.infer<
+  typeof ownerRealtimeTokenInputSchema
+>;
+
+export const widgetRealtimeTokenInputSchema = z.object({
+  // Defaults to the visitor's latest conversation.
+  conversationId: z.uuid().nullable(),
+});
+export type WidgetRealtimeTokenInput = z.infer<
+  typeof widgetRealtimeTokenInputSchema
+>;
+
+export const widgetRealtimeTokenSchema = z
+  .object({ token: z.string(), conversationId: z.uuid() })
+  .nullable();
+export type WidgetRealtimeToken = z.infer<typeof widgetRealtimeTokenSchema>;

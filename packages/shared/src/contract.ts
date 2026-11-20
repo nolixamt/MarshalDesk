@@ -26,6 +26,12 @@ import {
   widgetStartInputSchema,
   widgetThreadSchema,
 } from "./widget-chat";
+import {
+  ownerRealtimeTokenInputSchema,
+  realtimeTokenSchema,
+  widgetRealtimeTokenInputSchema,
+  widgetRealtimeTokenSchema,
+} from "./realtime";
 
 export const healthSchema = z.object({
   status: z.literal("ok"),
@@ -246,6 +252,32 @@ export const contract = {
         }),
       )
       .output(widgetConversationSchema),
+    // Opens the socket for the visitor's own conversation only. Null before the first message.
+    getRealtimeToken: visitorOnly
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/widget/realtime-token",
+          summary:
+            "Get a short-lived token for the conversation's live updates",
+          tags: ["Widget"],
+        }),
+      )
+      .input(widgetRealtimeTokenInputSchema)
+      .output(widgetRealtimeTokenSchema),
+  },
+  realtime: {
+    getToken: conversationErrors
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/realtime/token",
+          summary: "Get a short-lived token for live updates",
+          tags: ["Real time"],
+        }),
+      )
+      .input(ownerRealtimeTokenInputSchema)
+      .output(realtimeTokenSchema),
   },
   inbox: {
     list: ownerOnly
