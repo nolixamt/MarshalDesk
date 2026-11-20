@@ -23,6 +23,46 @@ export function mergeIntoThread(
   };
 }
 
+/** Adds one message that arrived live. Returns the same thread when it's already there. */
+export function addMessageToThread(
+  thread: WidgetThread | undefined,
+  message: WidgetMessage,
+): WidgetThread | undefined {
+  if (!thread || thread.messages.some((entry) => entry.id === message.id)) {
+    return thread;
+  }
+  return {
+    conversation: thread.conversation,
+    messages: [...thread.messages, message].sort(byCreatedAt),
+  };
+}
+
+/** Updates the shown conversation. Changes to an earlier conversation are ignored. */
+export function updateThreadConversation(
+  thread: WidgetThread | undefined,
+  conversation: WidgetConversation,
+): WidgetThread | undefined {
+  if (!thread || thread.conversation?.id !== conversation.id) return thread;
+  return { conversation, messages: thread.messages };
+}
+
+/** The member who last wrote in this conversation, for the typing indicator. */
+export function latestMemberMessage(
+  conversationId: string,
+  messages: WidgetMessage[],
+): WidgetMessage | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (
+      message?.conversationId === conversationId &&
+      message.author === "member"
+    ) {
+      return message;
+    }
+  }
+  return null;
+}
+
 function latestMemberName(
   conversationId: string,
   messages: WidgetMessage[],

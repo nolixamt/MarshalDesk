@@ -11,6 +11,7 @@ const COUNTER_THRESHOLD = MESSAGE_MAX_LENGTH - 400;
 export function WidgetComposer({
   value,
   onValueChange,
+  onBlur,
   onSend,
   showTalkToHuman,
   onTalkToHuman,
@@ -18,6 +19,7 @@ export function WidgetComposer({
 }: {
   value: string;
   onValueChange?: (value: string) => void;
+  onBlur?: () => void;
   onSend?: () => void;
   showTalkToHuman: boolean;
   onTalkToHuman?: () => void;
@@ -52,6 +54,7 @@ export function WidgetComposer({
           maxLength={MESSAGE_MAX_LENGTH}
           autoFocus={autoFocus}
           onChange={(event) => onValueChange?.(event.target.value)}
+          onBlur={onBlur}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&

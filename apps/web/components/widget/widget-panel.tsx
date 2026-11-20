@@ -18,6 +18,7 @@ export function WidgetPanel({
   agentOn,
   draft,
   onDraftChange,
+  onDraftBlur,
   onSend,
   onSelectQuestion,
   onTalkToHuman,
@@ -35,6 +36,7 @@ export function WidgetPanel({
   agentOn: boolean;
   draft: string;
   onDraftChange?: (value: string) => void;
+  onDraftBlur?: () => void;
   onSend?: () => void;
   onSelectQuestion?: (question: string) => void;
   onTalkToHuman?: () => void;
@@ -80,6 +82,7 @@ export function WidgetPanel({
       <WidgetComposer
         value={draft}
         onValueChange={onDraftChange}
+        onBlur={onDraftBlur}
         onSend={onSend}
         showTalkToHuman={agentOn}
         onTalkToHuman={onTalkToHuman}

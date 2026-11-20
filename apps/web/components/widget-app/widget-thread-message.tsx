@@ -9,13 +9,15 @@ import { memberAvatarUrl } from "@/lib/avatars";
 
 const MEMBER_NAME_FALLBACK = "Support team";
 
-function memberAuthor(message: WidgetMessageData): WidgetMessageAuthor {
-  const name = message.memberName ?? MEMBER_NAME_FALLBACK;
+export function memberAuthor(
+  message: Pick<WidgetMessageData, "memberName" | "memberImageUrl"> | null,
+): Extract<WidgetMessageAuthor, { role: "member" }> {
+  const name = message?.memberName ?? MEMBER_NAME_FALLBACK;
   const generated = memberAvatarUrl(name);
   return {
     role: "member",
     name,
-    avatarUrl: message.memberImageUrl ?? generated,
+    avatarUrl: message?.memberImageUrl ?? generated,
     fallbackAvatarUrl: generated,
   };
 }

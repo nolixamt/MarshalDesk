@@ -20,6 +20,7 @@ import { WidgetLauncher } from "@/components/widget/widget-launcher";
 import { WidgetMessage } from "@/components/widget/widget-message";
 import { WidgetPanel } from "@/components/widget/widget-panel";
 import { WidgetSuggestedQuestions } from "@/components/widget/widget-suggested-questions";
+import { WidgetTypingIndicator } from "@/components/widget/widget-typing-indicator";
 import {
   resolveAgentAvatarUrl,
   WidgetTheme,
@@ -30,14 +31,15 @@ import {
   widgetOrpc,
   withVisitor,
 } from "@/lib/widget/client";
-import { mergeIntoThread, widgetStatus } from "@/lib/widget/thread";
+import {
+  latestMemberMessage,
+  mergeIntoThread,
+  widgetStatus,
+} from "@/lib/widget/thread";
 
+import { useConversationRoom } from "./use-conversation-room";
 import { useEmbedBridge } from "./use-embed-bridge";
-import { WidgetThreadMessage } from "./widget-thread-message";
-
-// Polling stands in for real-time delivery until the PartyServer sockets land.
-const POLL_OPEN_MS = 4_000;
-const POLL_COLLAPSED_MS = 15_000;
+import { memberAuthor, WidgetThreadMessage } from "./widget-thread-message";
 
 const threadKey = widgetOrpc.widget.getThread.queryKey();
 
@@ -114,8 +116,19 @@ export function WidgetApp({
     queryKey: threadKey,
     queryFn: () => withVisitor(() => widgetClient.widget.getThread()),
     enabled: started,
-    refetchInterval: open ? POLL_OPEN_MS : POLL_COLLAPSED_MS,
   });
+
+  const conversationId = thread.data?.conversation?.id ?? null;
+  const room = useConversationRoom({
+    conversationId,
+    enabled: started,
+    threadKey,
+  });
+  const { stopTyping } = room;
+
+  useEffect(() => {
+    if (!open) stopTyping();
+  }, [open, stopTyping]);
 
   const layoutState = !started ? "hidden" : open ? "open" : "collapsed";
   useEffect(() => {
@@ -139,7 +152,7 @@ export function WidgetApp({
     setInitialIds(new Set(thread.data.messages.map((message) => message.id)));
   }
 
-  const lastKey = `${messages.at(-1)?.id ?? ""}:${pending.length}`;
+  const lastKey = `${messages.at(-1)?.id ?? ""}:${pending.length}:${room.memberTyping}`;
   useLayoutEffect(() => {
     const body = bodyRef.current;
     if (open && body) body.scrollTop = body.scrollHeight;
@@ -159,11 +172,16 @@ export function WidgetApp({
           const result = await withVisitor(() =>
             widgetClient.widget.sendMessage({ body: item.body }),
           );
-          // A poll that started before the send would overwrite the merged thread.
-          await queryClient.cancelQueries({ queryKey: threadKey });
+          // A fetch that started before the send would overwrite the merged thread.
+          const fetching = queryClient.isFetching({ queryKey: threadKey }) > 0;
+          if (fetching)
+            await queryClient.cancelQueries({ queryKey: threadKey });
           queryClient.setQueryData<WidgetThread>(threadKey, (current) =>
             mergeIntoThread(current, result.conversation, result.messages),
           );
+          if (fetching) {
+            void queryClient.invalidateQueries({ queryKey: threadKey });
+          }
           setPending((current) =>
             current.filter((entry) => entry.localId !== item.localId),
           );
@@ -184,6 +202,7 @@ export function WidgetApp({
   function send(text: string) {
     const body = text.trim();
     if (!body) return;
+    stopTyping();
     const item: PendingMessage = {
       localId: crypto.randomUUID(),
       body,
@@ -240,7 +259,11 @@ export function WidgetApp({
           status={widgetStatus(thread.data)}
           agentOn={canAskForHuman}
           draft={draft}
-          onDraftChange={setDraft}
+          onDraftChange={(value) => {
+            setDraft(value);
+            room.onDraftChange(value);
+          }}
+          onDraftBlur={stopTyping}
           onSend={() => {
             send(draft);
             setDraft("");
@@ -269,6 +292,13 @@ export function WidgetApp({
             <WidgetSuggestedQuestions
               questions={config.suggestedQuestions}
               onSelect={send}
+            />
+          )}
+          {room.memberTyping && conversation && (
+            <WidgetTypingIndicator
+              author={memberAuthor(
+                latestMemberMessage(conversation.id, messages),
+              )}
             />
           )}
           {pending.map((item) => (
