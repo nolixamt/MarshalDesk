@@ -99,7 +99,8 @@ export function visitorName(visitor: Visitor): string {
   const { city, country } = visitor.details;
   const place = city ?? country;
   if (place) return `Visitor from ${place}`;
-  return `Visitor ${visitor.id.replace(/^v_/, "").slice(0, 4)}`;
+  // Visitor ids are UUIDv7, whose leading characters are a timestamp shared by nearby visitors.
+  return `Visitor ${visitor.id.replaceAll("-", "").slice(-4)}`;
 }
 
 export function sortConversations(

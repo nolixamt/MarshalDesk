@@ -1,20 +1,23 @@
 "use client";
 
 import type { Conversation, Message } from "@marshaldesk/shared";
-import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { PanelRightCloseIcon, PanelRightOpenIcon, XIcon } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { IconButton } from "@/components/dashboard/icon-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { visitorAvatarUrl } from "@/lib/avatars";
 
-import { canTransition } from "./inbox-reducer";
+import { Composer } from "./composer";
 import { handoffReasonLabel, visitorName } from "./labels";
 import { MessageItem, type Participant } from "./message-item";
-import { Composer } from "./composer";
 import { StateBadge } from "./state-badge";
+import { canTransition } from "./transitions";
+
+const NOTICE_MS = 6_000;
 
 export function ConversationView({
   conversation,
@@ -23,6 +26,9 @@ export function ConversationView({
   agent,
   owner,
   now,
+  busy,
+  notice,
+  onDismissNotice,
   detailsOpen,
   onToggleDetails,
   onTakeOver,
@@ -31,17 +37,20 @@ export function ConversationView({
   onReply,
 }: {
   conversation: Conversation;
-  messages: Message[];
+  messages: Message[] | undefined;
   arrivedIds: ReadonlySet<string>;
   agent: Participant;
   owner: Participant;
   now: number;
+  busy: boolean;
+  notice: string | null;
+  onDismissNotice: () => void;
   detailsOpen: boolean;
   onToggleDetails: () => void;
   onTakeOver: () => void;
   onHandBack: () => void;
   onClose: () => void;
-  onReply: (body: string) => void;
+  onReply: (body: string) => Promise<void>;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   const { state } = conversation;
@@ -51,7 +60,13 @@ export function ConversationView({
       "[data-slot=scroll-area-viewport]",
     );
     if (viewport) viewport.scrollTop = viewport.scrollHeight;
-  }, [conversation.id, messages.length]);
+  }, [conversation.id, messages?.length]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(onDismissNotice, NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice, onDismissNotice]);
 
   return (
     <section
@@ -83,17 +98,27 @@ export function ConversationView({
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           {canTransition(state, "take_over") ? (
-            <Button size="sm" onClick={onTakeOver}>
+            <Button size="sm" disabled={busy} onClick={onTakeOver}>
               Take over
             </Button>
           ) : null}
           {canTransition(state, "hand_back") ? (
-            <Button size="sm" variant="outline" onClick={onHandBack}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={onHandBack}
+            >
               Hand to agent
             </Button>
           ) : null}
           {canTransition(state, "close") ? (
-            <Button size="sm" variant="outline" onClick={onClose}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={onClose}
+            >
               Close
             </Button>
           ) : null}
@@ -108,18 +133,34 @@ export function ConversationView({
         </div>
       </header>
 
+      {notice ? (
+        <div
+          role="status"
+          className="flex shrink-0 items-center gap-2 border-b border-foreground/10 bg-muted/60 py-1.5 pr-1.5 pl-4 text-xs text-muted-foreground"
+        >
+          <p className="min-w-0 flex-1">{notice}</p>
+          <IconButton label="Dismiss" onClick={onDismissNotice}>
+            <XIcon />
+          </IconButton>
+        </div>
+      ) : null}
+
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-5 px-4 py-5">
-          {messages.map((message) => (
-            <MessageItem
-              key={message.id}
-              message={message}
-              agent={agent}
-              owner={owner}
-              arrived={arrivedIds.has(message.id)}
-              now={now}
-            />
-          ))}
+          {messages ? (
+            messages.map((message) => (
+              <MessageItem
+                key={message.id}
+                message={message}
+                agent={agent}
+                owner={owner}
+                arrived={arrivedIds.has(message.id)}
+                now={now}
+              />
+            ))
+          ) : (
+            <MessagesSkeleton />
+          )}
           <div ref={endRef} />
         </div>
       </ScrollArea>
@@ -137,5 +178,15 @@ export function ConversationView({
         />
       )}
     </section>
+  );
+}
+
+function MessagesSkeleton() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-5">
+      <Skeleton className="h-10 w-3/5 rounded-xl" />
+      <Skeleton className="ml-auto h-14 w-2/3 rounded-xl" />
+      <Skeleton className="h-10 w-1/2 rounded-xl" />
+    </div>
   );
 }

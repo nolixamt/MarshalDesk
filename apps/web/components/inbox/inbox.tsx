@@ -1,14 +1,13 @@
 "use client";
 
 import { accentColors } from "@marshaldesk/shared";
-import { useQuery } from "@tanstack/react-query";
 import {
-  useEffect,
-  useMemo,
-  useReducer,
-  useState,
-  useSyncExternalStore,
-} from "react";
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useWidgetSettings } from "@/components/dashboard/widget-settings-context";
 import {
@@ -17,47 +16,23 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { agentAvatarUrl, memberAvatarUrl } from "@/lib/avatars";
-import { createMockInbox } from "@/lib/mock/inbox";
+import { patchConversation, upsertConversation } from "@/lib/inbox/cache";
 import { orpc } from "@/lib/orpc/client";
+import { useArrivals } from "@/lib/use-arrivals";
 
-import {
-  ConversationList,
-  matchesFilter,
-  type InboxFilter,
-} from "./conversation-list";
+import { ConversationList } from "./conversation-list";
 import { ConversationView } from "./conversation-view";
-import { inboxReducer, type InboxState } from "./inbox-reducer";
+import { matchesFilter, type InboxFilter } from "./filters";
 import { sortConversations } from "./labels";
+import { useConversationActions } from "./use-conversation-actions";
 import { VisitorDetails } from "./visitor-details";
+
+const LIST_POLL_MS = 5_000;
+const CONVERSATION_POLL_MS = 3_000;
+const POLL_STALE_MS = 2_000;
 
 const handleClassName =
   "w-3 bg-transparent after:w-1 focus-visible:ring-0 [&>div]:opacity-0 hover:[&>div]:opacity-100 focus-visible:[&>div]:opacity-100 data-[separator=active]:[&>div]:opacity-100 [&>div]:transition-opacity";
-
-function initInbox({
-  now,
-  initialSelectedId,
-}: {
-  now: number;
-  initialSelectedId: string | null;
-}): InboxState {
-  const inbox = createMockInbox(now);
-  const fallback = sortConversations(
-    inbox.conversations.filter((c) => matchesFilter(c, "open")),
-  )[0];
-  const selectedId =
-    inbox.conversations.find((c) => c.id === initialSelectedId)?.id ??
-    fallback?.id ??
-    null;
-
-  return {
-    ...inbox,
-    conversations: inbox.conversations.map((c) =>
-      c.id === selectedId ? { ...c, unread: false } : c,
-    ),
-    selectedId,
-    arrivedIds: new Set(),
-  };
-}
 
 const WIDE_QUERY = "(min-width: 1280px)";
 
@@ -75,6 +50,19 @@ function useIsWide(): boolean {
   );
 }
 
+function subscribeToVisibility(onChange: () => void) {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+}
+
+function usePageVisible(): boolean {
+  return useSyncExternalStore(
+    subscribeToVisibility,
+    () => document.visibilityState === "visible",
+    () => true,
+  );
+}
+
 function writeSelectionToUrl(id: string) {
   const url = new URL(window.location.href);
   url.searchParams.set("c", id);
@@ -88,13 +76,11 @@ export function Inbox({
   now: number;
   initialSelectedId: string | null;
 }) {
-  const [state, dispatch] = useReducer(
-    inboxReducer,
-    { now: serverNow, initialSelectedId },
-    initInbox,
-  );
+  const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
   const [filter, setFilter] = useState<InboxFilter>("open");
   const isWide = useIsWide();
+  const pageVisible = usePageVisible();
   const [detailsPreference, setDetailsPreference] = useState<boolean | null>(
     null,
   );
@@ -116,22 +102,72 @@ export function Inbox({
       agentAvatarUrl(settings.agentName, accentColors[settings.color].hex),
   };
   const ownerName = currentOwner?.user.name ?? "You";
+  const ownerImage = currentOwner?.user.image ?? null;
   const owner = {
     name: ownerName,
-    avatarUrl: currentOwner?.user.image ?? memberAvatarUrl(ownerName),
+    avatarUrl: ownerImage ?? memberAvatarUrl(ownerName),
   };
+
+  const actions = useConversationActions({
+    name: ownerName,
+    imageUrl: ownerImage,
+  });
+
+  const { data: conversations = [] } = useQuery({
+    ...orpc.inbox.list.queryOptions(),
+    staleTime: POLL_STALE_MS,
+    refetchInterval: actions.pending ? false : LIST_POLL_MS,
+    refetchOnWindowFocus: true,
+  });
+  const { data: detail, isError: detailFailed } = useQuery({
+    ...orpc.inbox.get.queryOptions({
+      input: selectedId ? { id: selectedId } : skipToken,
+    }),
+    staleTime: POLL_STALE_MS,
+    refetchInterval: actions.pending ? false : CONVERSATION_POLL_MS,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+
+  const listed = conversations.find((c) => c.id === selectedId);
+  const loadedDetail = detail?.conversation.id === selectedId ? detail : null;
+  const selected = loadedDetail?.conversation ?? listed;
+  const messages = loadedDetail?.messages;
+
+  const rowArrivals = useArrivals(
+    conversations.map((c) => c.id),
+    "list",
+  );
+  const messageArrivals = useArrivals(
+    (messages ?? []).filter((m) => m.author !== "member").map((m) => m.id),
+    loadedDetail ? loadedDetail.conversation.id : null,
+  );
+
+  const { mutate: markRead } = useMutation(
+    orpc.inbox.markRead.mutationOptions({
+      onSuccess: (conversation) =>
+        upsertConversation(queryClient, conversation),
+    }),
+  );
+  const selectedUnread = Boolean(
+    listed?.unread || loadedDetail?.conversation.unread,
+  );
+
+  useEffect(() => {
+    if (!selectedId || !selectedUnread || !pageVisible) return;
+    patchConversation(queryClient, selectedId, { unread: false });
+    markRead({ id: selectedId });
+  }, [selectedId, selectedUnread, pageVisible, queryClient, markRead]);
 
   const visible = useMemo(
     () =>
-      sortConversations(
-        state.conversations.filter((c) => matchesFilter(c, filter)),
-      ),
-    [state.conversations, filter],
+      sortConversations(conversations.filter((c) => matchesFilter(c, filter))),
+    [conversations, filter],
   );
-  const selected = state.conversations.find((c) => c.id === state.selectedId);
 
   function select(id: string) {
-    dispatch({ type: "select", conversationId: id });
+    setSelectedId(id);
+    actions.dismissNotice();
     writeSelectionToUrl(id);
   }
 
@@ -139,10 +175,12 @@ export function Inbox({
     setFilter(next);
     if (selected && matchesFilter(selected, next)) return;
     const first = sortConversations(
-      state.conversations.filter((c) => matchesFilter(c, next)),
+      conversations.filter((c) => matchesFilter(c, next)),
     )[0];
     if (first) select(first.id);
   }
+
+  const showConversation = selected && !(detailFailed && !listed);
 
   return (
     <div className="h-[calc(100svh-3.5rem)] px-3 pt-3 pb-3 md:h-[calc(100svh-4.5rem)] lg:px-4">
@@ -151,63 +189,51 @@ export function Inbox({
         <ResizablePanel id="list" defaultSize="30%" minSize={240} maxSize="45%">
           <ConversationList
             conversations={visible}
-            allConversations={state.conversations}
+            allConversations={conversations}
+            arrivedIds={rowArrivals}
             filter={filter}
             onFilterChange={changeFilter}
-            selectedId={state.selectedId}
+            selectedId={selectedId}
             onSelect={select}
             now={now}
           />
         </ResizablePanel>
         <ResizableHandle withHandle className={handleClassName} />
         <ResizablePanel id="conversation" minSize={340}>
-          {selected ? (
+          {showConversation ? (
             <ConversationView
               conversation={selected}
-              messages={state.messages[selected.id] ?? []}
-              arrivedIds={state.arrivedIds}
+              messages={messages}
+              arrivedIds={messageArrivals}
               agent={agent}
               owner={owner}
               now={now}
+              busy={actions.pending}
+              notice={
+                actions.notice?.conversationId === selected.id
+                  ? actions.notice.text
+                  : null
+              }
+              onDismissNotice={actions.dismissNotice}
               detailsOpen={detailsOpen}
               onToggleDetails={() => setDetailsPreference(!detailsOpen)}
-              onTakeOver={() =>
-                dispatch({ type: "take_over", conversationId: selected.id })
-              }
-              onHandBack={() =>
-                dispatch({
-                  type: "hand_back",
-                  conversationId: selected.id,
-                  messageId: crypto.randomUUID(),
-                  at: new Date().toISOString(),
-                })
-              }
-              onClose={() =>
-                dispatch({
-                  type: "close",
-                  conversationId: selected.id,
-                  messageId: crypto.randomUUID(),
-                  at: new Date().toISOString(),
-                })
-              }
-              onReply={(body) => {
+              onTakeOver={() => actions.takeOver(selected.id)}
+              onHandBack={() => actions.handBack(selected.id)}
+              onClose={() => actions.close(selected.id)}
+              onReply={async (body) => {
                 setNow(Date.now());
-                dispatch({
-                  type: "reply",
-                  conversationId: selected.id,
-                  messageId: crypto.randomUUID(),
-                  at: new Date().toISOString(),
-                  body,
-                });
+                await actions.reply(selected.id, body);
               }}
             />
           ) : (
-            <div className="flex h-full items-center justify-center rounded-xl bg-card text-sm text-muted-foreground ring-1 ring-foreground/10">
-              Pick a conversation to read it here.
+            <div className="flex h-full items-center justify-center rounded-xl bg-card px-6 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
+              {conversations.length === 0
+                ? "Conversations show up here as soon as a visitor writes in."
+                : "Pick a conversation to read it here."}
             </div>
           )}
         </ResizablePanel>
-        {detailsOpen && selected ? (
+        {detailsOpen && showConversation ? (
           <>
             <ResizableHandle withHandle className={handleClassName} />
             <ResizablePanel

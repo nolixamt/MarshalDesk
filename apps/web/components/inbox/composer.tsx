@@ -14,15 +14,18 @@ export function Composer({
   onSend,
 }: {
   takesOver: boolean;
-  onSend: (body: string) => void;
+  onSend: (body: string) => Promise<void>;
 }) {
   const [body, setBody] = useState("");
   const parsed = replyInputSchema.safeParse({ body });
 
   function send() {
     if (!parsed.success) return;
-    onSend(parsed.data.body);
+    const sent = body;
     setBody("");
+    onSend(parsed.data.body).catch(() => {
+      setBody((current) => (current === "" ? sent : current));
+    });
   }
 
   return (

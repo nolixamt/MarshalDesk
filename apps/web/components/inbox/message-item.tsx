@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message } from "@marshaldesk/shared";
+import type { Message, SystemNotice } from "@marshaldesk/shared";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { memberAvatarUrl } from "@/lib/avatars";
 import { cn } from "@/lib/utils";
 
 import { AgentTurnDetails } from "./agent-turn-details";
@@ -34,7 +35,8 @@ export function MessageItem({
   const time = timeAgo(message.createdAt, now);
 
   switch (message.author) {
-    case "system":
+    case "system": {
+      const label = noticeLabel(message.systemNotice);
       return (
         <p
           className={cn(
@@ -42,9 +44,13 @@ export function MessageItem({
             enter,
           )}
         >
+          {label ? (
+            <span className="font-medium text-foreground/80">{label} · </span>
+          ) : null}
           {message.body}
         </p>
       );
+    }
     case "visitor":
       return (
         <div className={cn("flex flex-col items-start gap-1", enter)}>
@@ -75,13 +81,7 @@ export function MessageItem({
     case "member":
       return (
         <div className={cn("flex flex-col items-end gap-1", enter)}>
-          <Author
-            participant={{
-              name: message.memberName ?? owner.name,
-              avatarUrl: owner.avatarUrl,
-            }}
-            time={time}
-          />
+          <Author participant={memberParticipant(message, owner)} time={time} />
           <div className="max-w-[min(36rem,85%)] rounded-xl bg-primary px-3.5 py-2.5 text-sm break-words whitespace-pre-wrap text-primary-foreground">
             {message.body}
           </div>
@@ -89,6 +89,32 @@ export function MessageItem({
       );
     default: {
       const unhandled: never = message.author;
+      return unhandled;
+    }
+  }
+}
+
+function memberParticipant(message: Message, owner: Participant): Participant {
+  if (!message.memberName) return owner;
+  return {
+    name: message.memberName,
+    avatarUrl: message.memberImageUrl ?? memberAvatarUrl(message.memberName),
+  };
+}
+
+function noticeLabel(notice: SystemNotice | null): string | null {
+  if (notice === null) return null;
+  switch (notice) {
+    case "greeting":
+      return "Greeting";
+    case "agent_off":
+      return "Agent off";
+    case "hand_back":
+      return "Handed to the agent";
+    case "closed":
+      return "Closed";
+    default: {
+      const unhandled: never = notice;
       return unhandled;
     }
   }
