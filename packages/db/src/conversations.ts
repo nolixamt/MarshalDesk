@@ -51,6 +51,14 @@ const THREAD_MESSAGE_LIMIT = 200;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+// Guarded state changes use updateAll: it is one `UPDATE … WHERE <every filter> RETURNING`.
+// `update()` would read the row first and then update it by id alone, so the state guard
+// wouldn't be part of the write and a reply racing a close could reopen the conversation.
+async function firstRow<T>(rows: AsyncIterable<T>): Promise<T | null> {
+  for await (const row of rows) return row;
+  return null;
+}
+
 function preview(body: string): string {
   const flat = body.replace(/\s+/g, " ").trim();
   return flat.length > PREVIEW_LENGTH
@@ -264,12 +272,13 @@ export async function requestHuman(
   workspaceId: string,
   visitorId: string,
 ): Promise<ConversationRow | null> {
-  const row = await db.orm.public.Conversation.where({
-    workspaceId,
-    visitorId,
-    state: "ai",
-  }).update({ state: "waiting", handoffReason: "visitor_requested" });
-  return row ?? null;
+  return firstRow(
+    db.orm.public.Conversation.where({
+      workspaceId,
+      visitorId,
+      state: "ai",
+    }).updateAll({ state: "waiting", handoffReason: "visitor_requested" }),
+  );
 }
 
 // ---------------------------------------------------------------- inbox (owner) side
@@ -349,16 +358,19 @@ export async function saveMemberReply(input: {
 }): Promise<TransitionResult> {
   const message = await db.transaction(async (tx) => {
     const now = new Date();
-    const conversation = await tx.orm.public.Conversation.where({
-      id: input.conversationId,
-      workspaceId: input.workspaceId,
-    })
-      .where((c) => c.state.in([...OPEN_STATES]))
-      .update({
-        state: "human",
-        lastMessagePreview: preview(input.body),
-        lastMessageAt: now,
-      });
+    const conversation = await firstRow(
+      tx.orm.public.Conversation.where({
+        id: input.conversationId,
+        workspaceId: input.workspaceId,
+      })
+        .where((c) => c.state.in([...OPEN_STATES]))
+        .updateAll({
+          state: "human",
+          unread: false,
+          lastMessagePreview: preview(input.body),
+          lastMessageAt: now,
+        }),
+    );
     if (!conversation) return null;
     return insertMessage(
       tx,
@@ -394,11 +406,13 @@ export async function handBackConversation(
   noticeBody: string,
 ): Promise<TransitionResult> {
   const message = await db.transaction(async (tx) => {
-    const conversation = await tx.orm.public.Conversation.where({
-      id: conversationId,
-      workspaceId,
-      state: "human",
-    }).update({ state: "ai", handoffReason: null });
+    const conversation = await firstRow(
+      tx.orm.public.Conversation.where({
+        id: conversationId,
+        workspaceId,
+        state: "human",
+      }).updateAll({ state: "ai", handoffReason: null }),
+    );
     if (!conversation) return null;
     return insertMessage(
       tx,
@@ -421,12 +435,14 @@ export async function closeConversation(
   noticeBody: string,
 ): Promise<TransitionResult> {
   const message = await db.transaction(async (tx) => {
-    const conversation = await tx.orm.public.Conversation.where({
-      id: conversationId,
-      workspaceId,
-    })
-      .where((c) => c.state.in([...OPEN_STATES]))
-      .update({ state: "closed", closedAt: new Date() });
+    const conversation = await firstRow(
+      tx.orm.public.Conversation.where({
+        id: conversationId,
+        workspaceId,
+      })
+        .where((c) => c.state.in([...OPEN_STATES]))
+        .updateAll({ state: "closed", closedAt: new Date() }),
+    );
     if (!conversation) return null;
     return insertMessage(
       tx,
