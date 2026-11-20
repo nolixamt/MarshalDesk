@@ -29,7 +29,10 @@ export default async function proxy(request: NextRequest) {
     );
     return response;
   }
-  return dashboardGate(request);
+  const response = await dashboardGate(request);
+  // The dashboard is never meant to be framed.
+  response.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+  return response;
 }
 
 export const config = {

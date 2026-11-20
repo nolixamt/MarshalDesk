@@ -34,12 +34,21 @@ function countryName(code: string | undefined): string | null {
   }
 }
 
+// Off Vercel the geo headers can be forged, and a malformed city fails to URI-decode.
+function safeGeolocation(headers: Headers): ReturnType<typeof geolocation> {
+  try {
+    return geolocation({ headers });
+  } catch {
+    return {};
+  }
+}
+
 /** Location comes from Vercel's geo headers (empty locally); the raw IP is never read or stored. */
 export function visitorDetailsFrom(
   headers: Headers,
   browser: WidgetBrowserDetails,
 ): VisitorDetailsInput {
-  const geo = geolocation({ headers });
+  const geo = safeGeolocation(headers);
   const ua = new UAParser(headers.get("user-agent") ?? "").getResult();
   return {
     country: countryName(geo.country),

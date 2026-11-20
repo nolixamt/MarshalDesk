@@ -23,9 +23,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'cc46b23b9b17ee5bd153023bca25ea17e16b3a0b071ad275a1cafbd5dd3e778e'>;
+  StorageHashBase<'588464ad75f7a2e51caa399e28a3dfc37006c44f05eed7895cb188933f828618'>;
 export type ExecutionHash =
-  ExecutionHashBase<'24ac2bbe1e28e6a66261ba8a4bc728c25c80ef549c130b4619eb35aac4666672'>;
+  ExecutionHashBase<'a203cbb0023bda4be8ed9099ea0179b09f1bff462f924da3633bafba6557f3f3'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -392,6 +392,7 @@ export namespace Models {
     lastMessagePreview: FieldOutputTypes['public']['Conversation']['lastMessagePreview'];
     state: FieldOutputTypes['public']['Conversation']['state'];
     unread: FieldOutputTypes['public']['Conversation']['unread'];
+    updatedAt: FieldOutputTypes['public']['Conversation']['updatedAt'];
     visitorId: FieldOutputTypes['public']['Conversation']['visitorId'];
     workspaceId: FieldOutputTypes['public']['Conversation']['workspaceId'];
     messages: public_Message[];
@@ -552,6 +553,14 @@ type ContractBase = Omit<
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/bool@1', false>;
                   };
+                  readonly many: false;
+                };
+                readonly updated_at: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                  readonly typeParams: { readonly precision: 3 };
                   readonly many: false;
                 };
                 readonly visitor_id: {
@@ -1133,6 +1142,14 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly typeParams: { readonly precision: 3 };
+                };
+              };
               readonly visitorId: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/uuid@1' };
@@ -1191,6 +1208,7 @@ type ContractBase = Omit<
                 readonly lastMessagePreview: { readonly column: 'last_message_preview' };
                 readonly state: { readonly column: 'state' };
                 readonly unread: { readonly column: 'unread' };
+                readonly updatedAt: { readonly column: 'updated_at' };
                 readonly visitorId: { readonly column: 'visitor_id' };
                 readonly workspaceId: { readonly column: 'workspace_id' };
               };
@@ -1724,6 +1742,18 @@ type ContractBase = Omit<
           readonly ref: {
             readonly entry: 'conversations';
             readonly field: 'id';
+            readonly namespace: 'public';
+          };
+        },
+        {
+          readonly onUpdate: {
+            readonly id: 'timestampNow';
+            readonly kind: 'generator';
+            readonly params: { readonly precision: 3 };
+          };
+          readonly ref: {
+            readonly entry: 'conversations';
+            readonly field: 'updated_at';
             readonly namespace: 'public';
           };
         },

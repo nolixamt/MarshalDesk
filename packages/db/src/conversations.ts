@@ -25,6 +25,7 @@ export type ConversationRow = {
   lastMessagePreview: string;
   lastMessageAt: Date;
   createdAt: Date;
+  updatedAt: Date;
   closedAt: Date | null;
 };
 

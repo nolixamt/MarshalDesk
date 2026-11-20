@@ -20,11 +20,8 @@ const COLLAPSED_SIZE = 88;
 const OPEN_WIDTH = 416;
 const OPEN_MAX_HEIGHT = 720;
 
-function start() {
-  const script = document.currentScript;
-  if (!(script instanceof HTMLScriptElement) || window.__marshaldeskWidget) {
-    return;
-  }
+function start(script: HTMLScriptElement) {
+  if (window.__marshaldeskWidget) return;
   const workspaceId = script.dataset.workspace;
   if (!workspaceId) {
     console.warn("MarshalDesk: the snippet is missing data-workspace.");
@@ -157,8 +154,15 @@ function start() {
   document.body.appendChild(iframe);
 }
 
-if (document.body) {
-  start();
-} else {
-  document.addEventListener("DOMContentLoaded", start, { once: true });
+// currentScript is only set while this file first runs, so read it now: an async snippet in
+// <head> can run before <body> exists, and then start() runs later from DOMContentLoaded.
+const currentScript = document.currentScript;
+if (currentScript instanceof HTMLScriptElement) {
+  if (document.body) {
+    start(currentScript);
+  } else {
+    document.addEventListener("DOMContentLoaded", () => start(currentScript), {
+      once: true,
+    });
+  }
 }

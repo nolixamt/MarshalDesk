@@ -249,6 +249,16 @@
                   "kind": "scalar"
                 }
               },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 3
+                  }
+                }
+              },
               "visitorId": {
                 "nullable": false,
                 "type": {
@@ -338,6 +348,9 @@
                 },
                 "unread": {
                   "column": "unread"
+                },
+                "updatedAt": {
+                  "column": "updated_at"
                 },
                 "visitorId": {
                   "column": "visitor_id"
@@ -1101,6 +1114,18 @@
                   },
                   "nullable": false
                 },
+                "updated_at": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 3
+                  }
+                },
                 "visitor_id": {
                   "codecId": "pg/uuid@1",
                   "dataType": "pg/uuid",
@@ -1782,10 +1807,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "cc46b23b9b17ee5bd153023bca25ea17e16b3a0b071ad275a1cafbd5dd3e778e"
+    "storageHash": "588464ad75f7a2e51caa399e28a3dfc37006c44f05eed7895cb188933f828618"
   },
   "execution": {
-    "executionHash": "24ac2bbe1e28e6a66261ba8a4bc728c25c80ef549c130b4619eb35aac4666672",
+    "executionHash": "a203cbb0023bda4be8ed9099ea0179b09f1bff462f924da3633bafba6557f3f3",
     "mutations": {
       "defaults": [
         {
@@ -1796,6 +1821,20 @@
           "ref": {
             "entry": "conversations",
             "field": "id",
+            "namespace": "public"
+          }
+        },
+        {
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator",
+            "params": {
+              "precision": 3
+            }
+          },
+          "ref": {
+            "entry": "conversations",
+            "field": "updated_at",
             "namespace": "public"
           }
         },

@@ -116,6 +116,8 @@ model Conversation {
   lastMessagePreview String            @default("") @map("last_message_preview")
   lastMessageAt      DateTime          @default(now()) @map("last_message_at")
   createdAt          DateTime          @default(now()) @map("created_at")
+  // Bumped by every write, so clients can ignore an older snapshot that arrives late.
+  updatedAt          DateTime          @default(now()) @onUpdate(now()) @map("updated_at")
   closedAt           DateTime?         @map("closed_at")
   messages           Message[]
 

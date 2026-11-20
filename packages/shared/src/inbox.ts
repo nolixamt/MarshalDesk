@@ -121,6 +121,8 @@ export const conversationSchema = z.object({
   lastMessageAt: z.iso.datetime(),
   unread: z.boolean(),
   createdAt: z.iso.datetime(),
+  // Version for ordering snapshots: a client keeps the newer of two copies.
+  updatedAt: z.iso.datetime(),
   closedAt: z.iso.datetime().nullable(),
 });
 export type Conversation = z.infer<typeof conversationSchema>;

@@ -43,6 +43,7 @@ export function toConversation(row: ConversationWithVisitor): Conversation {
     lastMessageAt: row.lastMessageAt.toISOString(),
     unread: row.unread,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
     closedAt: row.closedAt?.toISOString() ?? null,
   };
 }
@@ -65,7 +66,11 @@ export function toMessage(row: MessageRow): Message {
 }
 
 export function toWidgetConversation(row: ConversationRow): WidgetConversation {
-  return { id: row.id, state: row.state, handoffReason: row.handoffReason };
+  return {
+    id: row.id,
+    state: row.state,
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
 export function toWidgetMessage(row: MessageRow): WidgetMessage {

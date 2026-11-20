@@ -2,7 +2,6 @@ import * as z from "zod";
 import { accentColorSchema, widgetPositionSchema } from "./widget";
 import {
   conversationStateSchema,
-  handoffReasonSchema,
   MESSAGE_MAX_LENGTH,
   messageAuthorSchema,
   systemNoticeSchema,
@@ -66,10 +65,11 @@ export const widgetMessageSchema = z.object({
 });
 export type WidgetMessage = z.infer<typeof widgetMessageSchema>;
 
+// The handoff reason is the owner's context and stays out of the widget.
 export const widgetConversationSchema = z.object({
   id: z.uuid(),
   state: conversationStateSchema,
-  handoffReason: handoffReasonSchema.nullable(),
+  updatedAt: z.iso.datetime(),
 });
 export type WidgetConversation = z.infer<typeof widgetConversationSchema>;
 
