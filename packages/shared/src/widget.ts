@@ -31,6 +31,13 @@ export const accentColors: Record<
 export const AGENT_NAME_MAX_LENGTH = 40;
 export const GREETING_MAX_LENGTH = 300;
 export const MAX_SUGGESTED_QUESTIONS = 4;
+export const MAX_ALLOWED_DOMAINS = 20;
+export const DEFAULT_GREETING = "Hi there! How can we help you today?";
+
+export function defaultAgentName(workspaceName: string): string {
+  const suffix = " Agent";
+  return `${workspaceName.slice(0, AGENT_NAME_MAX_LENGTH - suffix.length).trim()}${suffix}`;
+}
 
 export const hostnameSchema = z
   .string()
@@ -55,9 +62,21 @@ export const widgetSettingsSchema = z.object({
     .trim()
     .min(1, "Write a greeting")
     .max(GREETING_MAX_LENGTH),
-  allowedDomains: z.array(hostnameSchema),
+  allowedDomains: z
+    .array(hostnameSchema)
+    .max(MAX_ALLOWED_DOMAINS, `Add at most ${MAX_ALLOWED_DOMAINS} domains`)
+    .refine(
+      (domains) => new Set(domains).size === domains.length,
+      "Each domain can only be added once",
+    ),
 });
 export type WidgetSettings = z.infer<typeof widgetSettingsSchema>;
+
+// The avatar is changed through the avatar procedures, never through a settings patch.
+export const widgetSettingsPatchSchema = widgetSettingsSchema
+  .omit({ agentAvatarUrl: true })
+  .partial();
+export type WidgetSettingsPatch = z.infer<typeof widgetSettingsPatchSchema>;
 
 export const setupStepIdSchema = z.enum(["source", "domain", "snippet"]);
 export type SetupStepId = z.infer<typeof setupStepIdSchema>;
@@ -68,3 +87,80 @@ export const setupProgressSchema = z.object({
   snippetInstalled: z.boolean(),
 });
 export type SetupProgress = z.infer<typeof setupProgressSchema>;
+
+export const widgetSettingsStateSchema = z.object({
+  workspaceId: z.uuid(),
+  settings: widgetSettingsSchema,
+  setupProgress: setupProgressSchema,
+});
+export type WidgetSettingsState = z.infer<typeof widgetSettingsStateSchema>;
+
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
+export const avatarContentTypeSchema = z.enum([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+export type AvatarContentType = z.infer<typeof avatarContentTypeSchema>;
+
+export function avatarExtension(contentType: AvatarContentType): string {
+  switch (contentType) {
+    case "image/png":
+      return "png";
+    case "image/jpeg":
+      return "jpg";
+    case "image/webp":
+      return "webp";
+    case "image/gif":
+      return "gif";
+    default: {
+      const unreachable: never = contentType;
+      return unreachable;
+    }
+  }
+}
+
+// Re-checked on the server twice: when the upload URL is issued and against the stored object.
+export function validateAvatarFile(file: {
+  type: string;
+  size: number;
+}): string | null {
+  if (!avatarContentTypeSchema.safeParse(file.type).success) {
+    return "Use a PNG, JPEG, WebP or GIF image.";
+  }
+  if (file.size === 0) {
+    return "This image is empty.";
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    return "This image is larger than 2 MB.";
+  }
+  return null;
+}
+
+export const createAvatarUploadInputSchema = z.object({
+  contentType: avatarContentTypeSchema,
+  size: z.number().int().positive().max(AVATAR_MAX_BYTES),
+});
+export type CreateAvatarUploadInput = z.infer<
+  typeof createAvatarUploadInputSchema
+>;
+
+export const avatarUploadSchema = z.object({
+  key: z.string(),
+  uploadUrl: z.url(),
+  // Sent with the PUT exactly as given: both are part of the signature.
+  headers: z.object({
+    "Content-Type": avatarContentTypeSchema,
+    "Cache-Control": z.string(),
+  }),
+});
+export type AvatarUpload = z.infer<typeof avatarUploadSchema>;
+
+export const confirmAvatarUploadInputSchema = z.object({
+  key: z.string().min(1).max(200),
+});
+export type ConfirmAvatarUploadInput = z.infer<
+  typeof confirmAvatarUploadInputSchema
+>;

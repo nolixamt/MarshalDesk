@@ -17,12 +17,58 @@
     "namespaces": {
       "public": {
         "enum": {
+          "AccentColor": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "Blue",
+                "value": "blue"
+              },
+              {
+                "name": "Indigo",
+                "value": "indigo"
+              },
+              {
+                "name": "Violet",
+                "value": "violet"
+              },
+              {
+                "name": "Pink",
+                "value": "pink"
+              },
+              {
+                "name": "Red",
+                "value": "red"
+              },
+              {
+                "name": "Orange",
+                "value": "orange"
+              },
+              {
+                "name": "Green",
+                "value": "green"
+              }
+            ]
+          },
           "MemberRole": {
             "codecId": "pg/text@1",
             "members": [
               {
                 "name": "Owner",
                 "value": "owner"
+              }
+            ]
+          },
+          "WidgetPosition": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "BottomRight",
+                "value": "bottom-right"
+              },
+              {
+                "name": "BottomLeft",
+                "value": "bottom-left"
               }
             ]
           }
@@ -117,6 +163,43 @@
           },
           "Workspace": {
             "fields": {
+              "agentAvatarKey": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "agentName": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "allowedDomains": {
+                "many": {
+                  "elementNullable": false
+                },
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "color": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "AccentColor",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -125,6 +208,13 @@
                   "typeParams": {
                     "precision": 3
                   }
+                }
+              },
+              "greeting": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
                 }
               },
               "id": {
@@ -139,6 +229,29 @@
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
+                }
+              },
+              "position": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "WidgetPosition",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "snippetInstalledAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 3
+                  }
                 }
               },
               "updatedAt": {
@@ -171,14 +284,35 @@
             },
             "storage": {
               "fields": {
+                "agentAvatarKey": {
+                  "column": "agent_avatar_key"
+                },
+                "agentName": {
+                  "column": "agent_name"
+                },
+                "allowedDomains": {
+                  "column": "allowed_domains"
+                },
+                "color": {
+                  "column": "color"
+                },
                 "createdAt": {
                   "column": "created_at"
+                },
+                "greeting": {
+                  "column": "greeting"
                 },
                 "id": {
                   "column": "id"
                 },
                 "name": {
                   "column": "name"
+                },
+                "position": {
+                  "column": "position"
+                },
+                "snippetInstalledAt": {
+                  "column": "snippet_installed_at"
                 },
                 "updatedAt": {
                   "column": "updated_at"
@@ -291,7 +425,61 @@
               ]
             },
             "workspaces": {
+              "checks": [
+                {
+                  "expression": "array_position(\"allowed_domains\", NULL) IS NULL",
+                  "name": "workspaces_allowed_domains_elem_not_null_50f9fffb",
+                  "prefix": "workspaces_allowed_domains_elem_not_null"
+                },
+                {
+                  "expression": "\"color\" IN ('blue', 'indigo', 'violet', 'pink', 'red', 'orange', 'green')",
+                  "name": "workspaces_color_check_5299eb4e",
+                  "prefix": "workspaces_color_check"
+                },
+                {
+                  "expression": "\"position\" IN ('bottom-right', 'bottom-left')",
+                  "name": "workspaces_position_check_1202051e",
+                  "prefix": "workspaces_position_check"
+                }
+              ],
               "columns": {
+                "agent_avatar_key": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "agent_name": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "allowed_domains": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": []
+                  },
+                  "many": {
+                    "elementNullable": false
+                  },
+                  "nullable": false
+                },
+                "color": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "blue"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "AccentColor",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
                 "created_at": {
                   "codecId": "pg/timestamptz-date@1",
                   "dataType": "pg/timestamptz",
@@ -304,6 +492,15 @@
                     "precision": 3
                   }
                 },
+                "greeting": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "Hi there! How can we help you today?"
+                  },
+                  "nullable": false
+                },
                 "id": {
                   "codecId": "pg/uuid@1",
                   "dataType": "pg/uuid",
@@ -313,6 +510,29 @@
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
                   "nullable": false
+                },
+                "position": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "bottom-right"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "WidgetPosition",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "snippet_installed_at": {
+                  "codecId": "pg/timestamptz-date@1",
+                  "dataType": "pg/timestamptz",
+                  "nullable": true,
+                  "typeParams": {
+                    "precision": 3
+                  }
                 },
                 "updated_at": {
                   "codecId": "pg/timestamptz-date@1",
@@ -334,10 +554,29 @@
             }
           },
           "valueSet": {
+            "AccentColor": {
+              "kind": "valueSet",
+              "values": [
+                "blue",
+                "indigo",
+                "violet",
+                "pink",
+                "red",
+                "orange",
+                "green"
+              ]
+            },
             "MemberRole": {
               "kind": "valueSet",
               "values": [
                 "owner"
+              ]
+            },
+            "WidgetPosition": {
+              "kind": "valueSet",
+              "values": [
+                "bottom-right",
+                "bottom-left"
               ]
             }
           }
@@ -346,7 +585,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "180de13c94d2aa53f56b4eb11b59833919cb58313ae29716cb5d5c3a0c5d2d17"
+    "storageHash": "b8c4acd6924b82a35ab9b6c357f56e5afccd82a83e4aadfafb5654ec2f19b4a4"
   },
   "execution": {
     "executionHash": "4d90250a0643a0cd02bafff29a1ad042e6474298be24316fc6041bdb21ee66b0",
