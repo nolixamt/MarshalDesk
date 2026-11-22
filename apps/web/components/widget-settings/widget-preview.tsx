@@ -56,7 +56,9 @@ function PagePlaceholder() {
 }
 
 export function WidgetPreview() {
-  const { settings } = useWidgetSettings();
+  const { settings, setupProgress } = useWidgetSettings();
+  // The agent stays off until the knowledge base has a ready source, as in the real widget.
+  const agentOn = setupProgress.hasReadySource;
   const accent = accentColors[settings.color];
   const address = settings.allowedDomains[0] ?? "yourwebsite.com";
   const avatarUrl = resolveAgentAvatarUrl(
@@ -98,11 +100,12 @@ export function WidgetPreview() {
               avatarUrl={avatarUrl}
               status="Here to help"
               greeting={settings.greeting}
-              suggestedQuestions={mockSuggestedQuestions.slice(
-                0,
-                MAX_SUGGESTED_QUESTIONS,
-              )}
-              agentOn
+              suggestedQuestions={
+                agentOn
+                  ? mockSuggestedQuestions.slice(0, MAX_SUGGESTED_QUESTIONS)
+                  : []
+              }
+              agentOn={agentOn}
               draft=""
             />
             <WidgetLauncher open />

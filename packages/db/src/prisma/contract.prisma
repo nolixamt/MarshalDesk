@@ -4,12 +4,35 @@ enum MemberRole {
   Owner = "owner"
 }
 
+enum WidgetPosition {
+  BottomRight = "bottom-right"
+  BottomLeft  = "bottom-left"
+}
+
+enum AccentColor {
+  Blue   = "blue"
+  Indigo = "indigo"
+  Violet = "violet"
+  Pink   = "pink"
+  Red    = "red"
+  Orange = "orange"
+  Green  = "green"
+}
+
 model Workspace {
   id        Uuid     @id @onCreate(uuid(7))
-  name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @onCreate(now()) @onUpdate(now()) @map("updated_at")
-  members   Member[]
+  name               String
+  position           WidgetPosition @default(BottomRight)
+  color              AccentColor    @default(Blue)
+  // Null means the default, "{name} Agent".
+  agentName          String?        @map("agent_name")
+  agentAvatarKey     String?        @map("agent_avatar_key")
+  greeting           String         @default("Hi there! How can we help you today?")
+  allowedDomains     String[]       @default([]) @map("allowed_domains")
+  snippetInstalledAt DateTime?      @map("snippet_installed_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @onCreate(now()) @onUpdate(now()) @map("updated_at")
+  members            Member[]
 
   @@map("workspaces")
 }

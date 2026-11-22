@@ -4,13 +4,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   accentColors,
   AGENT_NAME_MAX_LENGTH,
+  AVATAR_MAX_BYTES,
+  avatarContentTypeSchema,
   GREETING_MAX_LENGTH,
+  validateAvatarFile,
   widgetSettingsSchema,
+  type WidgetSettingsState,
 } from "@marshaldesk/shared";
-import { UploadIcon } from "lucide-react";
+import { ORPCError } from "@orpc/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LoaderCircleIcon } from "lucide-react";
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import type * as z from "zod";
 
+import { Dropzone } from "@/components/dashboard/dropzone";
 import {
   SettingsRow,
   SettingsSection,
@@ -22,11 +30,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { client, orpc } from "@/lib/orpc/client";
 
 const agentFormSchema = widgetSettingsSchema.pick({
   agentName: true,
@@ -34,6 +38,126 @@ const agentFormSchema = widgetSettingsSchema.pick({
 });
 type AgentFormInput = z.input<typeof agentFormSchema>;
 type AgentFormOutput = z.output<typeof agentFormSchema>;
+
+const AVATAR_ACCEPT = avatarContentTypeSchema.options.join(",");
+const AVATAR_HINT = `PNG, JPEG, WebP or GIF · up to ${AVATAR_MAX_BYTES / (1024 * 1024)} MB`;
+
+class AvatarUploadFailed extends Error {}
+
+async function uploadAvatarFile(file: File): Promise<WidgetSettingsState> {
+  const contentType = avatarContentTypeSchema.parse(file.type);
+  const upload = await client.widgetSettings.createAvatarUpload({
+    contentType,
+    size: file.size,
+  });
+  const response = await fetch(upload.uploadUrl, {
+    method: "PUT",
+    headers: upload.headers,
+    body: file,
+  });
+  if (!response.ok) {
+    throw new AvatarUploadFailed(`Upload failed with ${response.status}`);
+  }
+  return client.widgetSettings.confirmAvatarUpload({ key: upload.key });
+}
+
+function avatarErrorMessage(error: unknown): string {
+  if (error instanceof ORPCError && error.code === "AVATAR_INVALID") {
+    return error.message;
+  }
+  return "Couldn't upload this image. Check your connection and try again.";
+}
+
+function AvatarField() {
+  const { settings } = useWidgetSettings();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  function saveState(state: WidgetSettingsState) {
+    queryClient.setQueryData(orpc.widgetSettings.get.queryKey(), state);
+  }
+
+  const upload = useMutation({
+    mutationFn: uploadAvatarFile,
+    onMutate: () => setError(null),
+    onSuccess: saveState,
+    onError: (cause) => setError(avatarErrorMessage(cause)),
+  });
+  const remove = useMutation({
+    mutationFn: () => client.widgetSettings.removeAvatar(),
+    onMutate: () => setError(null),
+    onSuccess: saveState,
+    onError: () =>
+      setError(
+        "Couldn't remove the photo. Check your connection and try again.",
+      ),
+  });
+  const busy = upload.isPending || remove.isPending;
+
+  const avatarUrl = resolveAgentAvatarUrl(
+    settings.agentName,
+    settings.agentAvatarUrl,
+    accentColors[settings.color],
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-3">
+        <Avatar size="lg" aria-busy={busy || undefined}>
+          <AvatarImage src={avatarUrl} alt="" />
+          <AvatarFallback>
+            {settings.agentName.slice(0, 1).toUpperCase()}
+          </AvatarFallback>
+          {busy && (
+            <span className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-background/70">
+              <LoaderCircleIcon className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
+            </span>
+          )}
+        </Avatar>
+        <Dropzone
+          compact
+          multiple={false}
+          disabled={busy}
+          accept={AVATAR_ACCEPT}
+          validate={validateAvatarFile}
+          title={upload.isPending ? "Uploading…" : "Drop an image"}
+          hint={AVATAR_HINT}
+          className="min-w-0 flex-1"
+          onFiles={(accepted, rejected) => {
+            const [file] = accepted;
+            if (file) {
+              upload.mutate(file);
+            } else if (rejected[0]) {
+              setError(rejected[0].reason);
+            }
+          }}
+        />
+      </div>
+      {(error || settings.agentAvatarUrl) && (
+        <div className="flex items-start justify-between gap-3">
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : (
+            <span />
+          )}
+          {settings.agentAvatarUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => remove.mutate()}
+              className="shrink-0 text-muted-foreground"
+            >
+              {remove.isPending ? "Removing…" : "Remove photo"}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Counter({ length, max }: { length: number; max: number }) {
   return (
@@ -44,7 +168,7 @@ function Counter({ length, max }: { length: number; max: number }) {
 }
 
 export function AgentSection() {
-  const { settings, updateSettings } = useWidgetSettings();
+  const { settings, updateSettings, discardUnsaved } = useWidgetSettings();
 
   const form = useForm<AgentFormInput, unknown, AgentFormOutput>({
     resolver: zodResolver(agentFormSchema),
@@ -65,7 +189,9 @@ export function AgentSection() {
         event.target.value,
       );
       if (parsed.success) {
-        updateSettings({ agentName: parsed.data });
+        updateSettings({ agentName: parsed.data }, { debounce: true });
+      } else {
+        discardUnsaved(["agentName"]);
       }
     },
   });
@@ -75,15 +201,12 @@ export function AgentSection() {
         event.target.value,
       );
       if (parsed.success) {
-        updateSettings({ greeting: parsed.data });
+        updateSettings({ greeting: parsed.data }, { debounce: true });
+      } else {
+        discardUnsaved(["greeting"]);
       }
     },
   });
-  const avatarUrl = resolveAgentAvatarUrl(
-    settings.agentName,
-    settings.agentAvatarUrl,
-    accentColors[settings.color],
-  );
 
   return (
     <SettingsSection
@@ -120,31 +243,7 @@ export function AgentSection() {
         label="Avatar"
         description="Made from your agent's name until you upload a photo."
       >
-        <div className="flex items-center gap-3">
-          <Avatar size="lg">
-            <AvatarImage src={avatarUrl} alt="" />
-            <AvatarFallback>
-              {settings.agentName.slice(0, 1).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  focusableWhenDisabled
-                  className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-                />
-              }
-            >
-              <UploadIcon />
-              Upload
-            </TooltipTrigger>
-            <TooltipContent>Coming soon</TooltipContent>
-          </Tooltip>
-        </div>
+        <AvatarField />
       </SettingsRow>
       <SettingsRow
         label="Greeting"

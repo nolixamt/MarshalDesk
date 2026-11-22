@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'180de13c94d2aa53f56b4eb11b59833919cb58313ae29716cb5d5c3a0c5d2d17'>;
+  StorageHashBase<'b8c4acd6924b82a35ab9b6c357f56e5afccd82a83e4aadfafb5654ec2f19b4a4'>;
 export type ExecutionHash =
   ExecutionHashBase<'4d90250a0643a0cd02bafff29a1ad042e6474298be24316fc6041bdb21ee66b0'>;
 export type ProfileHash =
@@ -279,6 +279,16 @@ type FieldTypeOverrides = {
   readonly public: {
     readonly models: {
       readonly Member: { readonly role: { readonly output: 'owner'; readonly input: 'owner' } };
+      readonly Workspace: {
+        readonly color: {
+          readonly output: 'blue' | 'indigo' | 'violet' | 'pink' | 'red' | 'orange' | 'green';
+          readonly input: 'blue' | 'indigo' | 'violet' | 'pink' | 'red' | 'orange' | 'green';
+        };
+        readonly position: {
+          readonly output: 'bottom-right' | 'bottom-left';
+          readonly input: 'bottom-right' | 'bottom-left';
+        };
+      };
     };
   };
 };
@@ -301,6 +311,16 @@ export type FieldInputTypes = FieldTypesFromDomain<
 type ColumnTypeOverrides = {
   readonly public: {
     readonly members: { readonly role: { readonly output: 'owner'; readonly input: 'owner' } };
+    readonly workspaces: {
+      readonly color: {
+        readonly output: 'blue' | 'indigo' | 'violet' | 'pink' | 'red' | 'orange' | 'green';
+        readonly input: 'blue' | 'indigo' | 'violet' | 'pink' | 'red' | 'orange' | 'green';
+      };
+      readonly position: {
+        readonly output: 'bottom-right' | 'bottom-left';
+        readonly input: 'bottom-right' | 'bottom-left';
+      };
+    };
   };
 };
 export type StorageColumnTypes = ColumnTypesFromStorage<
@@ -329,9 +349,16 @@ export namespace Models {
     readonly [RelationKeys]?: 'workspace';
   };
   export type public_Workspace = {
+    agentAvatarKey: FieldOutputTypes['public']['Workspace']['agentAvatarKey'];
+    agentName: FieldOutputTypes['public']['Workspace']['agentName'];
+    allowedDomains: FieldOutputTypes['public']['Workspace']['allowedDomains'];
+    color: FieldOutputTypes['public']['Workspace']['color'];
     createdAt: FieldOutputTypes['public']['Workspace']['createdAt'];
+    greeting: FieldOutputTypes['public']['Workspace']['greeting'];
     id: FieldOutputTypes['public']['Workspace']['id'];
     name: FieldOutputTypes['public']['Workspace']['name'];
+    position: FieldOutputTypes['public']['Workspace']['position'];
+    snippetInstalledAt: FieldOutputTypes['public']['Workspace']['snippetInstalledAt'];
     updatedAt: FieldOutputTypes['public']['Workspace']['updatedAt'];
     members: public_Member[];
     readonly [RelationKeys]?: 'members';
@@ -425,12 +452,57 @@ type ContractBase = Omit<
             };
             readonly workspaces: {
               columns: {
+                readonly agent_avatar_key: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly agent_name: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly many: false;
+                };
+                readonly allowed_domains: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', readonly []>;
+                  };
+                  readonly many: { readonly elementNullable: false };
+                };
+                readonly color: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'blue'>;
+                  };
+                  readonly many: false;
+                };
                 readonly created_at: {
                   readonly dataType: 'pg/timestamptz';
                   readonly codecId: 'pg/timestamptz-date@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                   readonly typeParams: { readonly precision: 3 };
+                  readonly many: false;
+                };
+                readonly greeting: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<
+                      'pg/text@1',
+                      'Hi there! How can we help you today?'
+                    >;
+                  };
                   readonly many: false;
                 };
                 readonly id: {
@@ -443,6 +515,23 @@ type ContractBase = Omit<
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly position: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'bottom-right'>;
+                  };
+                  readonly many: false;
+                };
+                readonly snippet_installed_at: {
+                  readonly dataType: 'pg/timestamptz';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly nullable: true;
+                  readonly typeParams: { readonly precision: 3 };
                   readonly many: false;
                 };
                 readonly updated_at: {
@@ -460,7 +549,23 @@ type ContractBase = Omit<
             };
           };
           readonly valueSet: {
+            readonly AccentColor: {
+              readonly kind: 'valueSet';
+              readonly values: readonly [
+                'blue',
+                'indigo',
+                'violet',
+                'pink',
+                'red',
+                'orange',
+                'green',
+              ];
+            };
             readonly MemberRole: { readonly kind: 'valueSet'; readonly values: readonly ['owner'] };
+            readonly WidgetPosition: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['bottom-right', 'bottom-left'];
+            };
           };
         };
       };
@@ -537,6 +642,23 @@ type ContractBase = Omit<
           };
           readonly Workspace: {
             readonly fields: {
+              readonly agentAvatarKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly agentName: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly allowedDomains: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+                readonly many: { readonly elementNullable: false };
+              };
+              readonly color: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -545,6 +667,10 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly precision: 3 };
                 };
               };
+              readonly greeting: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly id: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/uuid@1' };
@@ -552,6 +678,18 @@ type ContractBase = Omit<
               readonly name: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly position: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly snippetInstalledAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-date@1';
+                  readonly typeParams: { readonly precision: 3 };
+                };
               };
               readonly updatedAt: {
                 readonly nullable: false;
@@ -579,22 +717,61 @@ type ContractBase = Omit<
               readonly table: 'workspaces';
               readonly namespaceId: 'public';
               readonly fields: {
+                readonly agentAvatarKey: { readonly column: 'agent_avatar_key' };
+                readonly agentName: { readonly column: 'agent_name' };
+                readonly allowedDomains: { readonly column: 'allowed_domains' };
+                readonly color: { readonly column: 'color' };
                 readonly createdAt: { readonly column: 'created_at' };
+                readonly greeting: { readonly column: 'greeting' };
                 readonly id: { readonly column: 'id' };
                 readonly name: { readonly column: 'name' };
+                readonly position: { readonly column: 'position' };
+                readonly snippetInstalledAt: { readonly column: 'snippet_installed_at' };
                 readonly updatedAt: { readonly column: 'updated_at' };
               };
             };
           };
         };
         readonly enum: {
+          readonly AccentColor: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'Blue'; readonly value: 'blue' },
+              { readonly name: 'Indigo'; readonly value: 'indigo' },
+              { readonly name: 'Violet'; readonly value: 'violet' },
+              { readonly name: 'Pink'; readonly value: 'pink' },
+              { readonly name: 'Red'; readonly value: 'red' },
+              { readonly name: 'Orange'; readonly value: 'orange' },
+              { readonly name: 'Green'; readonly value: 'green' },
+            ];
+          };
           readonly MemberRole: {
             readonly codecId: 'pg/text@1';
             readonly members: readonly [{ readonly name: 'Owner'; readonly value: 'owner' }];
           };
+          readonly WidgetPosition: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'BottomRight'; readonly value: 'bottom-right' },
+              { readonly name: 'BottomLeft'; readonly value: 'bottom-left' },
+            ];
+          };
         };
         readonly enumMemberTypes?: {
+          readonly AccentColor: readonly [
+            { readonly name: 'Blue'; readonly value: 'blue' },
+            { readonly name: 'Indigo'; readonly value: 'indigo' },
+            { readonly name: 'Violet'; readonly value: 'violet' },
+            { readonly name: 'Pink'; readonly value: 'pink' },
+            { readonly name: 'Red'; readonly value: 'red' },
+            { readonly name: 'Orange'; readonly value: 'orange' },
+            { readonly name: 'Green'; readonly value: 'green' },
+          ];
           readonly MemberRole: readonly [{ readonly name: 'Owner'; readonly value: 'owner' }];
+          readonly WidgetPosition: readonly [
+            { readonly name: 'BottomRight'; readonly value: 'bottom-right' },
+            { readonly name: 'BottomLeft'; readonly value: 'bottom-left' },
+          ];
         };
       };
     };

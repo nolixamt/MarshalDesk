@@ -20,7 +20,10 @@ async function DashboardGate({ children }: { children: React.ReactNode }) {
   await requireReadyViewer();
 
   const queryClient = makeQueryClient();
-  await queryClient.prefetchQuery(orpc.owner.getCurrent.queryOptions());
+  await Promise.all([
+    queryClient.prefetchQuery(orpc.owner.getCurrent.queryOptions()),
+    queryClient.prefetchQuery(orpc.widgetSettings.get.queryOptions()),
+  ]);
   const sidebarState = (await cookies()).get("sidebar_state")?.value;
 
   return (
