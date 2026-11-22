@@ -9,6 +9,7 @@ import {
   appendMessage,
   applyConversationChange,
   patchConversation,
+  pendingMessageId,
   refetchConversation,
   removeMessage,
 } from "@/lib/inbox/cache";
@@ -81,7 +82,7 @@ export function useConversationActions(author: ReplyAuthor) {
         await queryClient.cancelQueries({ queryKey: key });
         const createdAt = new Date().toISOString();
         const pending: Message = {
-          id: `pending-${crypto.randomUUID()}`,
+          id: pendingMessageId(),
           conversationId: id,
           author: "member",
           systemNotice: null,

@@ -10,6 +10,7 @@ import {
   createWorkspaceForOwner,
   findLatestConversation,
   findVisitor,
+  findVisitorConversation,
   findWorkspaceForUser,
   getConversation,
   getWidgetAccess,
@@ -44,6 +45,12 @@ import {
   toWidgetMessage,
 } from "@/lib/conversations/mappers";
 import { isHostAllowed } from "@/lib/visitor/development-hosts";
+import {
+  publishConversationChange,
+  publishConversationChangeById,
+  publishInboxConversation,
+} from "@/lib/realtime/events";
+import { issueRealtimeToken } from "@/lib/realtime/tokens";
 import {
   isAgentOn,
   startWidgetSession,
@@ -113,6 +120,7 @@ const requireVisitor = base
 
 const owner = os.owner.use(requireOwner);
 const inbox = os.inbox.use(requireOwner);
+const realtime = os.realtime.use(requireOwner);
 const widgetVisitor = os.widget.use(requireVisitor);
 const widgetSettings = os.widgetSettings.use(requireOwner);
 const signedInWorkspace = os.workspace.use(verifiedUserMiddleware(true));
@@ -138,6 +146,10 @@ function transitionOutput(
       }
     }
   }
+  publishConversationChange(
+    result.conversation,
+    result.message ? [result.message] : [],
+  );
   return {
     conversation: toConversation(result.conversation),
     message: result.message ? toMessage(result.message) : null,
@@ -288,6 +300,11 @@ export const router = os.router({
           agentOn: isAgentOn(),
           agentOffNotice: AGENT_OFF_NOTICE,
         });
+        publishConversationChangeById(
+          context.workspaceId,
+          result.conversation.id,
+          result.messages,
+        );
         // The agent pipeline (next chapter) starts here, after the save, without blocking.
         return {
           conversation: toWidgetConversation(result.conversation),
@@ -302,9 +319,68 @@ export const router = os.router({
           context.visitor.id,
         );
         if (!conversation) throw errors.TRANSITION_NOT_ALLOWED();
+        publishConversationChangeById(context.workspaceId, conversation.id, []);
         return toWidgetConversation(conversation);
       },
     ),
+    getRealtimeToken: widgetVisitor.getRealtimeToken.handler(
+      async ({ input, context }) => {
+        const conversation = input.conversationId
+          ? await findVisitorConversation(
+              context.workspaceId,
+              context.visitor.id,
+              input.conversationId,
+            )
+          : await findLatestConversation(
+              context.workspaceId,
+              context.visitor.id,
+            );
+        if (!conversation) return null;
+        return {
+          conversationId: conversation.id,
+          token: await issueRealtimeToken({
+            party: "conversation",
+            room: conversation.id,
+            role: "visitor",
+            wid: context.workspaceId,
+          }),
+        };
+      },
+    ),
+  },
+  realtime: {
+    getToken: realtime.getToken.handler(async ({ input, context, errors }) => {
+      switch (input.party) {
+        case "workspace":
+          return {
+            token: await issueRealtimeToken({
+              party: "workspace",
+              room: context.workspaceId,
+              role: "owner",
+              wid: context.workspaceId,
+            }),
+          };
+        case "conversation": {
+          const conversation = await getConversation(
+            context.workspaceId,
+            input.conversationId,
+          );
+          if (!conversation) throw errors.CONVERSATION_NOT_FOUND();
+          return {
+            token: await issueRealtimeToken({
+              party: "conversation",
+              room: conversation.id,
+              role: "owner",
+              wid: context.workspaceId,
+            }),
+          };
+        }
+        default: {
+          const unreachable: never = input;
+          return unreachable;
+        }
+      }
+    }),
   },
   inbox: {
     list: inbox.list.handler(async ({ context }) =>
@@ -364,6 +440,7 @@ export const router = os.router({
         input.id,
       );
       if (!conversation) throw errors.CONVERSATION_NOT_FOUND();
+      publishInboxConversation(conversation);
       return toConversation(conversation);
     }),
   },

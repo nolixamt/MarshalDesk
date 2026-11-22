@@ -124,7 +124,6 @@ export function WidgetNotice({
 }) {
   return (
     <p
-      role="status"
       className={cn(
         "mx-auto max-w-[85%] rounded-lg bg-muted/60 px-3 py-2 text-center text-xs/relaxed text-muted-foreground",
         className,
