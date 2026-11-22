@@ -1,9 +1,12 @@
 "use client";
 
+import { MESSAGE_MAX_LENGTH } from "@marshaldesk/shared";
 import { ArrowUpIcon } from "lucide-react";
 
 import { IconButton } from "@/components/dashboard/icon-button";
 import { Button } from "@/components/ui/button";
+
+const COUNTER_THRESHOLD = MESSAGE_MAX_LENGTH - 400;
 
 export function WidgetComposer({
   value,
@@ -11,12 +14,14 @@ export function WidgetComposer({
   onSend,
   showTalkToHuman,
   onTalkToHuman,
+  autoFocus,
 }: {
   value: string;
   onValueChange?: (value: string) => void;
   onSend?: () => void;
   showTalkToHuman: boolean;
   onTalkToHuman?: () => void;
+  autoFocus?: boolean;
 }) {
   const canSend = value.trim().length > 0;
 
@@ -44,7 +49,19 @@ export function WidgetComposer({
         <textarea
           rows={1}
           value={value}
+          maxLength={MESSAGE_MAX_LENGTH}
+          autoFocus={autoFocus}
           onChange={(event) => onValueChange?.(event.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
           placeholder="Write a message…"
           aria-label="Message"
           className="field-sizing-content max-h-28 min-h-8 flex-1 resize-none bg-transparent px-1.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
@@ -60,6 +77,11 @@ export function WidgetComposer({
           <ArrowUpIcon />
         </IconButton>
       </form>
+      {value.length > COUNTER_THRESHOLD && (
+        <p className="self-end text-xs text-muted-foreground tabular-nums">
+          {value.length} / {MESSAGE_MAX_LENGTH}
+        </p>
+      )}
     </div>
   );
 }

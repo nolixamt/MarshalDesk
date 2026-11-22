@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
     // redirect. Validate only segments that opt in with `instant`.
     instantInsights: { validationLevel: "manual-warning" },
   },
+  // The loader keeps a stable filename, so caches only hold it for five minutes.
+  async headers() {
+    return [
+      {
+        source: "/embed.js",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300" }],
+      },
+    ];
+  },
   partialPrefetching: true,
   transpilePackages: ["@marshaldesk/shared", "@marshaldesk/db"],
   turbopack: {

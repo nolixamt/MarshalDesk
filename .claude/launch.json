@@ -20,6 +20,18 @@
         "3100"
       ],
       "port": 3100
+    },
+    {
+      "name": "testhost",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4000",
+        "--directory",
+        ".claude/testhost"
+      ],
+      "port": 4000
     }
   ]
 }

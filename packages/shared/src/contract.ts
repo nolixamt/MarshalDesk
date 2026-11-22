@@ -9,6 +9,23 @@ import {
   widgetSettingsPatchSchema,
   widgetSettingsStateSchema,
 } from "./widget";
+import {
+  conversationChangeSchema,
+  conversationIdInputSchema,
+  conversationSchema,
+  conversationWithMessagesSchema,
+  inboxReplyInputSchema,
+} from "./inbox";
+import {
+  widgetConfigInputSchema,
+  widgetConfigSchema,
+  widgetConversationSchema,
+  widgetSendMessageInputSchema,
+  widgetSendMessageOutputSchema,
+  widgetSessionSchema,
+  widgetStartInputSchema,
+  widgetThreadSchema,
+} from "./widget-chat";
 
 export const healthSchema = z.object({
   status: z.literal("ok"),
@@ -54,6 +71,24 @@ const avatarErrors = ownerOnly.errors({
   AVATAR_INVALID: {
     message: "Use a PNG, JPEG, WebP or GIF image up to 2 MB.",
   },
+});
+
+const conversationErrors = ownerOnly.errors({
+  CONVERSATION_NOT_FOUND: { message: "This conversation doesn't exist." },
+  TRANSITION_NOT_ALLOWED: {
+    message: "This conversation has moved on. Refresh to see where it is now.",
+  },
+});
+
+// Public widget calls: anyone on an allowed domain may make them.
+const widgetPublic = oc.errors({
+  WIDGET_NOT_FOUND: { message: "This widget doesn't exist." },
+  DOMAIN_NOT_ALLOWED: { message: "The widget isn't allowed on this website." },
+});
+
+// visitorProcedure: needs the visitor token issued by widget.start.
+const visitorOnly = oc.errors({
+  VISITOR_UNAUTHORIZED: { message: "Start a new widget session." },
 });
 
 export const contract = {
@@ -150,6 +185,146 @@ export const contract = {
         }),
       )
       .output(widgetSettingsStateSchema),
+  },
+  widget: {
+    getConfig: widgetPublic
+      .meta(
+        openapi({
+          method: "GET",
+          path: "/widget/{workspaceId}/config",
+          summary: "Get the public widget settings for an allowed website",
+          tags: ["Widget"],
+        }),
+      )
+      .input(widgetConfigInputSchema)
+      .output(widgetConfigSchema),
+    // Issues or refreshes the visitor token and records visitor details.
+    start: widgetPublic
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/widget/{workspaceId}/sessions",
+          summary: "Start a widget session for a visitor",
+          tags: ["Widget"],
+        }),
+      )
+      .input(widgetStartInputSchema)
+      .output(widgetSessionSchema),
+    getThread: visitorOnly
+      .meta(
+        openapi({
+          method: "GET",
+          path: "/widget/thread",
+          summary: "Get the visitor's conversation history",
+          tags: ["Widget"],
+        }),
+      )
+      .output(widgetThreadSchema),
+    sendMessage: visitorOnly
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/widget/messages",
+          summary: "Send a message as the visitor",
+          tags: ["Widget"],
+        }),
+      )
+      .input(widgetSendMessageInputSchema)
+      .output(widgetSendMessageOutputSchema),
+    requestHuman: visitorOnly
+      .errors({
+        TRANSITION_NOT_ALLOWED: {
+          message: "A person is already on the way.",
+        },
+      })
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/widget/handoff",
+          summary: "Ask for a person instead of the agent",
+          tags: ["Widget"],
+        }),
+      )
+      .output(widgetConversationSchema),
+  },
+  inbox: {
+    list: ownerOnly
+      .meta(
+        openapi({
+          method: "GET",
+          path: "/conversations",
+          summary: "List the workspace's conversations, newest first",
+          tags: ["Inbox"],
+        }),
+      )
+      .output(z.array(conversationSchema)),
+    get: conversationErrors
+      .meta(
+        openapi({
+          method: "GET",
+          path: "/conversations/{id}",
+          summary: "Get a conversation with its full history",
+          tags: ["Inbox"],
+        }),
+      )
+      .input(conversationIdInputSchema)
+      .output(conversationWithMessagesSchema),
+    // Replying in ai or waiting takes the conversation over.
+    reply: conversationErrors
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/conversations/{id}/messages",
+          summary: "Reply to the visitor",
+          tags: ["Inbox"],
+        }),
+      )
+      .input(inboxReplyInputSchema)
+      .output(conversationChangeSchema),
+    takeOver: conversationErrors
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/conversations/{id}/take-over",
+          summary: "Take the conversation over from the agent",
+          tags: ["Inbox"],
+        }),
+      )
+      .input(conversationIdInputSchema)
+      .output(conversationChangeSchema),
+    handBack: conversationErrors
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/conversations/{id}/hand-back",
+          summary: "Hand the conversation back to the agent",
+          tags: ["Inbox"],
+        }),
+      )
+      .input(conversationIdInputSchema)
+      .output(conversationChangeSchema),
+    close: conversationErrors
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/conversations/{id}/close",
+          summary: "Close the conversation",
+          tags: ["Inbox"],
+        }),
+      )
+      .input(conversationIdInputSchema)
+      .output(conversationChangeSchema),
+    markRead: conversationErrors
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/conversations/{id}/read",
+          summary: "Mark the conversation as read",
+          tags: ["Inbox"],
+        }),
+      )
+      .input(conversationIdInputSchema)
+      .output(conversationSchema),
   },
 };
 

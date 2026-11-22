@@ -8,37 +8,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { visitorAvatarUrl } from "@/lib/avatars";
 import { cn } from "@/lib/utils";
 
+import { inboxFilters, matchesFilter, type InboxFilter } from "./filters";
 import { shortTimeAgo, visitorName } from "./labels";
 import { StateBadge } from "./state-badge";
-
-export type InboxFilter = "open" | "waiting" | "ai" | "human" | "closed";
-
-export const inboxFilters: { value: InboxFilter; label: string }[] = [
-  { value: "open", label: "All open" },
-  { value: "waiting", label: "Waiting" },
-  { value: "ai", label: "Agent" },
-  { value: "human", label: "You" },
-  { value: "closed", label: "Closed" },
-];
-
-export function matchesFilter(
-  conversation: Conversation,
-  filter: InboxFilter,
-): boolean {
-  switch (filter) {
-    case "open":
-      return conversation.state !== "closed";
-    case "waiting":
-    case "ai":
-    case "human":
-    case "closed":
-      return conversation.state === filter;
-    default: {
-      const unhandled: never = filter;
-      return unhandled;
-    }
-  }
-}
 
 function emptyMessage(filter: InboxFilter): string {
   switch (filter) {
@@ -62,6 +34,7 @@ function emptyMessage(filter: InboxFilter): string {
 export function ConversationList({
   conversations,
   allConversations,
+  arrivedIds,
   filter,
   onFilterChange,
   selectedId,
@@ -70,6 +43,7 @@ export function ConversationList({
 }: {
   conversations: Conversation[];
   allConversations: Conversation[];
+  arrivedIds: ReadonlySet<string>;
   filter: InboxFilter;
   onFilterChange: (filter: InboxFilter) => void;
   selectedId: string | null;
@@ -123,7 +97,14 @@ export function ConversationList({
         <ScrollArea className="min-h-0 flex-1">
           <ul className="divide-y divide-foreground/10">
             {conversations.map((conversation) => (
-              <li key={conversation.id}>
+              <li
+                key={conversation.id}
+                className={
+                  arrivedIds.has(conversation.id)
+                    ? "animate-enter motion-reduce:animate-none"
+                    : undefined
+                }
+              >
                 <ConversationRow
                   conversation={conversation}
                   selected={conversation.id === selectedId}
